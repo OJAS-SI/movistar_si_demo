@@ -24,9 +24,9 @@ if _REPO_ROOT not in sys.path:
 
 import traceback
 
-import si_demo.core as c
-from si_demo.topology import build_service_graph
-from si_demo.telemetry import ACCESS, CONTENT, TRANSPORT, IntervalTelemetry, TelemetryGenerator
+import si_core.contracts as c
+from si_core.topology import build_service_graph
+from si_core.telemetry import ACCESS, CONTENT, TRANSPORT, IntervalTelemetry, TelemetryGenerator
 
 
 def _setup(cfg=None):

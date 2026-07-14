@@ -23,7 +23,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-import si_demo.core as c
+import si_core.contracts as c
 
 
 def test_public_surface_is_complete():
@@ -119,7 +119,7 @@ def test_module1_topology_builds_and_integrates():
     """The topology generator builds a well-formed, Spain-grounded graph on top of
     the Module 0 contracts, and yields the shared-structure index the SI engine and
     scorer will consume."""
-    from si_demo.topology import build_service_graph
+    from si_core.topology import build_service_graph
 
     g = build_service_graph(c.tiny_config())
 
@@ -149,7 +149,7 @@ def test_module1_topology_builds_and_integrates():
 def test_module1_is_deterministic_with_foundation_seed():
     """The graph is a deterministic function of the DemoConfig seed, like everything
     built on the foundation."""
-    from si_demo.topology import build_service_graph
+    from si_core.topology import build_service_graph
     a = build_service_graph(c.tiny_config())
     b = build_service_graph(c.tiny_config())
     assert a.stb_ids == b.stb_ids
@@ -166,8 +166,8 @@ def test_module2_telemetry_integrates_with_topology():
     """The telemetry generator runs over the Module 1 graph and produces two streams
     that join cleanly: a strictly four-field core stream the SI engine can consume,
     and enrichment joined by (entity_id, timestamp)."""
-    from si_demo.topology import build_service_graph
-    from si_demo.telemetry import TelemetryGenerator
+    from si_core.topology import build_service_graph
+    from si_core.telemetry import TelemetryGenerator
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -186,8 +186,8 @@ def test_module2_telemetry_integrates_with_topology():
 def test_module2_healthy_world_raises_nothing_precursor():
     """On a healthy network the whole run stays below the healthy ceiling - the
     precursor to the SI engine (Module 4) raising no fault on healthy telemetry."""
-    from si_demo.topology import build_service_graph
-    from si_demo.telemetry import TelemetryGenerator
+    from si_core.topology import build_service_graph
+    from si_core.telemetry import TelemetryGenerator
 
     cfg = c.tiny_config()
     gen = TelemetryGenerator(build_service_graph(cfg), cfg)
@@ -204,9 +204,9 @@ def test_module3_faults_inject_with_ground_truth():
     """Topology + telemetry + fault injection: the three use-case faults appear in
     the faulted stream above the healthy baseline, the answer key is available, and
     the faulted core stream is still strictly four fields."""
-    from si_demo.topology import build_service_graph
-    from si_demo.telemetry import TelemetryGenerator, ACCESS
-    from si_demo.fault_injection import FaultInjector
+    from si_core.topology import build_service_graph
+    from si_core.telemetry import TelemetryGenerator, ACCESS
+    from si_core.fault_injection import FaultInjector
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -237,9 +237,9 @@ def test_module3_faults_inject_with_ground_truth():
 def test_module3_healthy_stretch_equals_healthy_world():
     """In a healthy stretch (no active event) the faulted stream is identical to the
     healthy stream, so the engine has clean ground for measuring false positives."""
-    from si_demo.topology import build_service_graph
-    from si_demo.telemetry import TelemetryGenerator
-    from si_demo.fault_injection import FaultInjector
+    from si_core.topology import build_service_graph
+    from si_core.telemetry import TelemetryGenerator
+    from si_core.fault_injection import FaultInjector
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -264,9 +264,9 @@ def test_module4_engine_detects_all_three_use_cases():
     """End to end through the engine: on the faulted four-field stream the engine
     detects each of the three injected faults and attributes each to its true layer,
     scored against ground truth, while firing on no healthy interval."""
-    from si_demo.topology import build_service_graph
-    from si_demo.fault_injection import FaultInjector
-    from si_demo.si_engine import NetworkMap, StructuralIntelligenceEngine
+    from si_core.topology import build_service_graph
+    from si_core.fault_injection import FaultInjector
+    from si_core.si_engine import NetworkMap, StructuralIntelligenceEngine
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -293,9 +293,9 @@ def test_module4_engine_detects_all_three_use_cases():
 
 def test_module4_engine_consumes_only_four_fields():
     """The engine is wired to the core stream only; enrichment never reaches it."""
-    from si_demo.topology import build_service_graph
-    from si_demo.fault_injection import FaultInjector
-    from si_demo.si_engine import NetworkMap, StructuralIntelligenceEngine
+    from si_core.topology import build_service_graph
+    from si_core.fault_injection import FaultInjector
+    from si_core.si_engine import NetworkMap, StructuralIntelligenceEngine
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -320,10 +320,10 @@ def test_module5_diagnosis_formats_each_use_case():
     """The engine's structural verdict flows into the formatter, which joins
     enrichment by (entity_id, timestamp) and produces an operator line and a complete
     certified-decision receipt for each of the three faults."""
-    from si_demo.topology import build_service_graph
-    from si_demo.fault_injection import FaultInjector
-    from si_demo.si_engine import NetworkMap, StructuralIntelligenceEngine
-    from si_demo.diagnosis import DiagnosisFormatter
+    from si_core.topology import build_service_graph
+    from si_core.fault_injection import FaultInjector
+    from si_core.si_engine import NetworkMap, StructuralIntelligenceEngine
+    from si_core.diagnosis import DiagnosisFormatter
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -349,10 +349,10 @@ def test_module5_diagnosis_formats_each_use_case():
 
 def test_module5_abstention_defers_to_human():
     """An engine abstention becomes a human-readable deferral, not a guess."""
-    from si_demo.topology import build_service_graph
-    from si_demo.fault_injection import FaultInjector
-    from si_demo.si_engine import NetworkMap, StructuralIntelligenceEngine
-    from si_demo.diagnosis import DiagnosisFormatter
+    from si_core.topology import build_service_graph
+    from si_core.fault_injection import FaultInjector
+    from si_core.si_engine import NetworkMap, StructuralIntelligenceEngine
+    from si_core.diagnosis import DiagnosisFormatter
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -379,10 +379,10 @@ def test_module6_scores_the_full_pipeline_against_ground_truth():
     """End to end: topology, telemetry, fault injection, engine, scoring. The harness
     detects all three faults, localizes and attributes each correctly, passes box-swap
     discrimination for the invisible fault, and reports zero false positives."""
-    from si_demo.topology import build_service_graph
-    from si_demo.fault_injection import FaultInjector
-    from si_demo.si_engine import NetworkMap, StructuralIntelligenceEngine
-    from si_demo.scoring import ScoringHarness
+    from si_core.topology import build_service_graph
+    from si_core.fault_injection import FaultInjector
+    from si_core.si_engine import NetworkMap, StructuralIntelligenceEngine
+    from si_core.scoring import ScoringHarness
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -401,10 +401,10 @@ def test_module6_scores_the_full_pipeline_against_ground_truth():
 
 def test_module6_scorecard_renders():
     """The scorecard renders to a manager-readable block with the promised numbers."""
-    from si_demo.topology import build_service_graph
-    from si_demo.fault_injection import FaultInjector
-    from si_demo.si_engine import NetworkMap, StructuralIntelligenceEngine
-    from si_demo.scoring import ScoringHarness
+    from si_core.topology import build_service_graph
+    from si_core.fault_injection import FaultInjector
+    from si_core.si_engine import NetworkMap, StructuralIntelligenceEngine
+    from si_core.scoring import ScoringHarness
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -423,12 +423,12 @@ def test_module7_console_renders_the_full_demo():
     """End to end: the pipeline's verdicts become a faithful console. Three panels
     with the right shapes, the four beats, the receipts and scores, the abstention and
     the clean decoys, and a self-contained HTML render, all from the verdicts alone."""
-    from si_demo.topology import build_service_graph
-    from si_demo.fault_injection import FaultInjector
-    from si_demo.si_engine import NetworkMap, StructuralIntelligenceEngine
-    from si_demo.diagnosis import DiagnosisFormatter
-    from si_demo.scoring import ScoringHarness
-    from si_demo.console import ConsoleBuilder, render_html, render_text
+    from si_core.topology import build_service_graph
+    from si_core.fault_injection import FaultInjector
+    from si_core.si_engine import NetworkMap, StructuralIntelligenceEngine
+    from si_core.diagnosis import DiagnosisFormatter
+    from si_core.scoring import ScoringHarness
+    from si_core.console import ConsoleBuilder, render_html, render_text
 
     cfg = c.tiny_config()
     g = build_service_graph(cfg)
@@ -458,7 +458,7 @@ def test_module8_one_call_runs_and_passes_the_self_test():
     order, runs it deterministically, produces the console, and passes its own
     self-test (all faults detected and attributed, the box swap avoided, no false
     positives)."""
-    from si_demo.orchestrator import run_demo
+    from si_core.orchestrator import run_demo
 
     r = run_demo(c.tiny_config())
     assert r.passed()
@@ -471,7 +471,7 @@ def test_module8_one_call_runs_and_passes_the_self_test():
 
 def test_module8_robust_across_seeds():
     """The full pipeline holds up on several random topologies, not just the default."""
-    from si_demo.orchestrator import run_demo
+    from si_core.orchestrator import run_demo
     for seed in [11, 22, 33]:
         assert run_demo(c.tiny_config(seed=seed)).passed(), f"failed for seed {seed}"
 

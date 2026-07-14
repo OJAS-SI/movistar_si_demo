@@ -47,7 +47,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Deque, Dict, List, Optional, Set, Tuple
 
-from .core import (
+from .contracts import (
     DemoConfig, Diagnosis, EntityType, Evidence, Layer, PredictedTrajectory,
     Provenance, Shape, assert_core_stream_clean,
 )

@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-from .core import DemoConfig, UseCase, default_config, tiny_config
+from .contracts import DemoConfig, UseCase, default_config, tiny_config
 from .console import ConsoleBuilder, ConsoleModel, render_html, render_text
 from .diagnosis import DiagnosisFormatter
 from .fault_injection import FaultInjector
@@ -123,7 +123,7 @@ def config_for_scale(scale: str, seed: Optional[int] = None) -> DemoConfig:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="python -m si_demo",
+        prog="python -m si_core",
         description="Movistar Service Intelligence demo, powered by Structural "
                     "Intelligence. One command runs the whole pipeline on synthetic, "
                     "fault-injected data and prints the operator console.")

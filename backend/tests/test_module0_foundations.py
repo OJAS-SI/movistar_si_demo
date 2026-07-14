@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 import sys
 # Plug-and-play path bootstrap: add the repo root (parent of this file's dir)
-# to sys.path so 'import si_demo' works from any working directory.
+# to sys.path so 'import si_core' works from any working directory.
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
@@ -23,7 +23,7 @@ if _REPO_ROOT not in sys.path:
 import dataclasses
 import traceback
 
-import si_demo.core as c
+import si_core.contracts as c
 
 
 # ---------------------------------------------------------------------------

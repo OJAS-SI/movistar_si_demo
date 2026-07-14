@@ -37,7 +37,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Iterator, List, Tuple
 
-from .core import (
+from .contracts import (
     CoreRecord, DemoConfig, EnrichmentRecord, EntityType, Layer, SeededRandom,
     make_core_record,
 )

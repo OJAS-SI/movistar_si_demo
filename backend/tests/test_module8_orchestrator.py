@@ -25,8 +25,8 @@ if _REPO_ROOT not in sys.path:
 
 import traceback
 
-import si_demo.core as c
-from si_demo.orchestrator import (
+import si_core.contracts as c
+from si_core.orchestrator import (
     DemoResult, build_arg_parser, config_for_scale, main, run_demo,
 )
 

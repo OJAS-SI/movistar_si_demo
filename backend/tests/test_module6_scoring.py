@@ -23,11 +23,11 @@ if _REPO_ROOT not in sys.path:
 
 import traceback
 
-import si_demo.core as c
-from si_demo.topology import build_service_graph
-from si_demo.fault_injection import FaultInjector
-from si_demo.si_engine import NetworkMap, StructuralIntelligenceEngine
-from si_demo.scoring import ScoringHarness, ScoreReport
+import si_core.contracts as c
+from si_core.topology import build_service_graph
+from si_core.fault_injection import FaultInjector
+from si_core.si_engine import NetworkMap, StructuralIntelligenceEngine
+from si_core.scoring import ScoringHarness, ScoreReport
 
 
 def _injector(cfg=None):

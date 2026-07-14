@@ -33,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from .core import DemoConfig, EntityType, Layer, SeededRandom, default_config
+from .contracts import DemoConfig, EntityType, Layer, SeededRandom, default_config
 
 
 # ---------------------------------------------------------------------------

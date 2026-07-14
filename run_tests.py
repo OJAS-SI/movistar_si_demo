@@ -50,9 +50,10 @@ def _abort_unsupported() -> None:
 _ensure_supported_python()
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TESTS = os.path.join(HERE, "tests")
-if HERE not in sys.path:
-    sys.path.insert(0, HERE)
+BACKEND = os.path.join(HERE, "backend")
+TESTS = os.path.join(BACKEND, "tests")
+if BACKEND not in sys.path:
+    sys.path.insert(0, BACKEND)
 
 
 def _load(path):

@@ -36,7 +36,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-from .core import (
+from .contracts import (
     DemoConfig, Diagnosis, Layer, SHAPE_TO_LAYER, Score, Shape, UseCase,
 )
 from .fault_injection import FaultInjector, FaultSpec

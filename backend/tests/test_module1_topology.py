@@ -23,8 +23,8 @@ if _REPO_ROOT not in sys.path:
 
 import traceback
 
-import si_demo.core as c
-from si_demo.topology import Membership, Node, ServiceGraph, build_service_graph
+import si_core.contracts as c
+from si_core.topology import Membership, Node, ServiceGraph, build_service_graph
 
 
 def _default():

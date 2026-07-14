@@ -38,9 +38,9 @@ def _ensure_supported_python() -> None:
 
 _ensure_supported_python()
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
 
-from si_demo.orchestrator import main
+from si_core.orchestrator import main
 
 if __name__ == "__main__":
     sys.exit(main())

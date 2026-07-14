@@ -29,7 +29,7 @@ import os
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from .core import Diagnosis, Layer, SHAPE_TO_LAYER, Score, Shape, UseCase
+from .contracts import Diagnosis, Layer, SHAPE_TO_LAYER, Score, Shape, UseCase
 from .diagnosis import DiagnosisFormatter, DiagnosisReport
 from .scoring import ScoreReport, ScoringHarness
 from .topology import ServiceGraph

@@ -45,7 +45,7 @@ from .config import (
     default_config, tiny_config, CANONICAL_REGIONS,
 )
 from .rng import SeededRandom
-from .contracts import (
+from .guards import (
     FROZEN_CONTRACT_VERSION,
     assert_four_field_boundary, assert_core_stream_clean,
 )

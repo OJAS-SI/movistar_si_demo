@@ -44,7 +44,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterator, List, Optional, Tuple
 
-from .core import (
+from .contracts import (
     DemoConfig, EnrichmentRecord, GroundTruthLabel, Layer, RampProfile,
     SeededRandom, UseCase, make_core_record,
 )

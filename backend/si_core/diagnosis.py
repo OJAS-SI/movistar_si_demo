@@ -28,7 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from .core import Diagnosis, Layer, Shape
+from .contracts import Diagnosis, Layer, Shape
 from .telemetry import IntervalTelemetry, TelemetryGenerator
 from .topology import ServiceGraph
 

@@ -139,6 +139,102 @@ def _largest_gaps(occupied: List[Tuple[int, int]], run: int, warmup: int,
     return gaps[:k]
 
 
+def _is_full_scale(config: DemoConfig) -> bool:
+    """The production 'full' picture: the six-region network at scale. Only this scale
+    carries the broad, multi-region fault set; 'tiny' keeps its three scripted faults."""
+    return len(config.regions) >= 6 and config.n_stb_target > 200
+
+
+# The generated fault kinds, one per (layer, shape) the engine can attribute.
+_ACCESS, _HOME, _CORE, _CONTENT = "access", "home", "core", "content"
+
+
+def _build_extra_faults(graph: ServiceGraph, config: DemoConfig, rng: SeededRandom,
+                        used_olts: set, frac) -> List[FaultSpec]:
+    """Full scale only: a realistic spread of additional faults, so every region and
+    every layer carries a genuine incident. Deterministic from the seed.
+
+    Per region: up to two access-node clusters (UC1-style) and one isolated home
+    (UC2-style), each on a distinct OLT. Nationally: a couple of core-transport routes
+    (PATH) and content sources (SOURCE). Onsets are staggered across the run so the
+    incidents overlap the way a real operations day does, while a healthy tail is left
+    clear for the decoys to measure false positives in isolation.
+    """
+    R = config.run_intervals
+    CLUSTER_MIN = 3
+    used = set(used_olts)
+
+    # 1) Gather targets: (kind, named_entity, affected_homes, region).
+    requests: List[Tuple[str, str, Tuple[str, ...], str]] = []
+    for r in config.regions:
+        region_olts = sorted(
+            (o for o in graph.olt_ids
+             if graph.nodes[o].region == r.name and o not in used and graph.stbs_by_olt.get(o)),
+            key=lambda o: -len(graph.stbs_by_olt[o]))
+        n_access = 0
+        for olt in region_olts:
+            homes = graph.stbs_by_olt[olt]
+            if n_access < 2 and len(homes) >= CLUSTER_MIN:
+                requests.append((_ACCESS, olt, tuple(homes[:min(9, len(homes))]), r.name))
+                used.add(olt)
+                n_access += 1
+        for olt in region_olts:                      # one isolated home on a fresh OLT
+            if olt in used:
+                continue
+            homes = graph.stbs_by_olt[olt]
+            if len(homes) >= 2:
+                requests.append((_HOME, homes[0], (homes[0],), r.name))
+                used.add(olt)
+                break
+
+    for route in graph.route_ids[:2]:                # a couple of core-transport routes
+        homes = graph.stbs_by_route.get(route, [])
+        if len(homes) >= 4:
+            requests.append((_CORE, route,
+                             tuple(sorted(rng.sample(homes, min(10, len(homes))))), "national"))
+    for content in graph.content_ids[:2]:            # a couple of content sources
+        homes = graph.stbs_by_content.get(content, [])
+        if len(homes) >= 4:
+            requests.append((_CONTENT, content,
+                             tuple(sorted(rng.sample(homes, min(10, len(homes))))), "national"))
+
+    # 2) Stagger them across the run, leaving a healthy tail for the decoys.
+    rng.shuffle(requests)
+    n = len(requests)
+    if n == 0:
+        return []
+    lo, hi = frac(0.05), frac(0.82)
+    span = max(1, hi - lo)
+    ramp = max(4, frac(0.015))
+
+    # (use_case, subsystem, true_layer, peak range, has_error_code, error_code, action)
+    profile = {
+        _ACCESS:  (UseCase.UC1_NETWORK_NODE,   ACCESS,    Layer.ACCESS,  (6.0, 7.0), True, "VIDEO_FREEZE",
+                   "inspect the access node and its aggregation before complaints escalate"),
+        _HOME:    (UseCase.UC2_INDIVIDUAL,     ACCESS,    Layer.HOME,    (5.0, 6.0), True, "WIFI_LOW",
+                   "proactive customer contact and gateway reconfiguration, no truck roll"),
+        _CORE:    (UseCase.UC4_CORE_PATH,      TRANSPORT, Layer.CORE,    (5.0, 6.5), True, "RTT_SPIKE",
+                   "investigate the core transport route carrying the affected homes"),
+        _CONTENT: (UseCase.UC5_CONTENT_SOURCE, CONTENT,   Layer.CONTENT, (5.0, 6.5), True, "SEGMENT_STALL",
+                   "investigate the content source and its delivery path"),
+    }
+
+    specs: List[FaultSpec] = []
+    for i, (kind, entity, homes, _region) in enumerate(requests):
+        use_case, subsystem, layer, (pk_lo, pk_hi), has_code, code, action = profile[kind]
+        onset = min(hi, lo + span * i // n + rng.randint(0, 3))
+        end = min(R, onset + ramp + 12 + rng.randint(0, frac(0.05)))
+        tipping = min(end - 1, onset + ramp + 4) if kind == _HOME else None
+        specs.append(FaultSpec(
+            fault_id=f"F-EX{i + 1:02d}-{kind[:3].upper()}", use_case=use_case, subsystem=subsystem,
+            target_entity=entity, affected_homes=homes, onset=onset, end=end,
+            ramp=RampProfile.GRADUAL, ramp_intervals=ramp,
+            peak_magnitude=round(rng.uniform(pk_lo, pk_hi), 2), is_decoy=False,
+            has_error_code=has_code, error_code=code, true_layer=layer, true_entity=entity,
+            box_swap_time=None, tipping_point=tipping, recommended_action=action))
+    return specs
+
+
 def build_fault_schedule(graph: ServiceGraph, config: DemoConfig) -> List[FaultSpec]:
     """Lay out the three use-case faults, the decoys, and (implicitly) the healthy
     stretches between them, deterministically and scaled to the run length."""
@@ -196,6 +292,15 @@ def build_fault_schedule(graph: ServiceGraph, config: DemoConfig) -> List[FaultS
         has_error_code=False, error_code=None, true_layer=Layer.ACCESS,
         true_entity=uc3_olt, box_swap_time=frac(0.74), tipping_point=None,
         recommended_action="investigate access segment, stop dispatching box swaps"))
+
+    # --- Full scale only: a broad, realistic fault set across every region and layer ---
+    # The three anchors above carry the demo's narrative; at full scale we add many more
+    # so the operator sees a genuine multi-region incident list (20-30 faults). Tiny keeps
+    # its three scripted faults unchanged. Added before the decoys so their healthy-gap
+    # seating accounts for every real fault.
+    if _is_full_scale(config):
+        specs.extend(_build_extra_faults(graph, config, rng.child("regional"),
+                                         used_olts, frac))
 
     # --- Decoys (honesty instruments) - short transients that must NOT fire ---
     # Seat each decoy in a healthy gap between the real faults (past a nominal warmup),

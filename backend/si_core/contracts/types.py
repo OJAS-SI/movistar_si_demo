@@ -61,12 +61,16 @@ class Shape(str, Enum):
 
 
 class UseCase(str, Enum):
-    """The injected scenario classes. UC1/UC2/UC3 are the three equal-weight use
-    cases; DECOY and HEALTHY are the honesty instruments that must NOT trigger a
+    """The injected scenario classes. UC1/UC2/UC3 are the three scripted anchor use
+    cases the demo narrative rests on; UC4/UC5 are the core-transport and content-source
+    variants generated at full scale so every layer and shape is exercised across all
+    regions. DECOY and HEALTHY are the honesty instruments that must NOT trigger a
     fault, and that let the demo measure false positives."""
     UC1_NETWORK_NODE = "uc1_network_node"        # gradual access-node degradation
     UC2_INDIVIDUAL = "uc2_individual"            # isolated per-household decline
     UC3_INVISIBLE = "uc3_invisible"              # label-less fault surviving a box swap
+    UC4_CORE_PATH = "uc4_core_path"              # core/transport route degradation (path)
+    UC5_CONTENT_SOURCE = "uc5_content_source"    # content source / encoder degradation
     DECOY = "decoy"                              # benign anomaly that must not fire
     HEALTHY = "healthy"                          # long healthy stretch
 

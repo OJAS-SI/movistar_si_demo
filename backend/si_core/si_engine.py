@@ -8,6 +8,8 @@ its true LAYER, projects the shape forward, and abstains honestly when the evide
 will not resolve.
 
 WHAT IT USES, AND WHAT IT DOES NOT.
+
+
   Fault signal (the only detection input): the four fields entity_src, entity_dst,
     timestamp, magnitude. The engine establishes a per-edge baseline from the healthy
     history it observes, then measures each edge's departure from it. It never reads
@@ -40,6 +42,15 @@ the conformal threshold behind abstention) stays internal. The emitted Diagnosis
 speaks only in the external register: a named element, a layer, a shape, a forward
 projection, a confidence, and an explainable receipt.
 """
+
+
+
+
+
+
+
+
+
 
 from __future__ import annotations
 

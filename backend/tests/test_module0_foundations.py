@@ -171,10 +171,12 @@ def test_shape_to_layer_mapping():
 
 
 def test_use_cases_include_honesty_instruments():
-    # The three equal-weight use cases plus the two honesty instruments.
+    # The three scripted anchor use cases, the two full-scale layer variants
+    # (core-path and content-source), plus the two honesty instruments.
     vals = {u for u in c.UseCase}
     assert {c.UseCase.UC1_NETWORK_NODE, c.UseCase.UC2_INDIVIDUAL,
-            c.UseCase.UC3_INVISIBLE, c.UseCase.DECOY, c.UseCase.HEALTHY} == vals
+            c.UseCase.UC3_INVISIBLE, c.UseCase.UC4_CORE_PATH, c.UseCase.UC5_CONTENT_SOURCE,
+            c.UseCase.DECOY, c.UseCase.HEALTHY} == vals
 
 
 # ---------------------------------------------------------------------------

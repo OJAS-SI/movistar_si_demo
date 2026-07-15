@@ -82,6 +82,8 @@ _TITLES = {
     UseCase.UC1_NETWORK_NODE: "A network node degrading (gradual access fault)",
     UseCase.UC2_INDIVIDUAL: "An individual household degrading (isolated, peers healthy)",
     UseCase.UC3_INVISIBLE: "An invisible fault that survives a set-top-box swap",
+    UseCase.UC4_CORE_PATH: "A core-transport route degrading (a path across access nodes)",
+    UseCase.UC5_CONTENT_SOURCE: "A content source degrading (unrelated homes, one source)",
 }
 
 
@@ -103,12 +105,23 @@ class ConsoleBuilder:
         per_interval: Dict[int, List[Diagnosis]] = {}
         for t in range(self.graph.config.run_intervals):
             per_interval[t] = engine.observe_and_diagnose(t, injector.interval(t).core)
+        return self.from_collected(injector, per_interval, formatter, harness)
+
+    def from_collected(self, injector, per_interval: Dict[int, List[Diagnosis]],
+                       formatter: DiagnosisFormatter, harness: ScoringHarness) -> ConsoleModel:
+        """Assemble the console from diagnoses that were ALREADY collected (e.g. by the
+        live stream), so the picture is built once and never recomputed. Scoring takes the
+        collected diagnoses as-is; only the handful of settled-verdict reports re-touch a
+        few intervals of telemetry for their enrichment join, which is cheap."""
         score_report = harness.score(injector, per_interval)
 
+        # score_report.per_use_case is built in the same order as the real specs, so pair
+        # them by position: matching on use_case would collide once many faults share a
+        # category (e.g. several access-node clusters across regions).
         findings: List[Tuple[Score, DiagnosisReport]] = []
-        for spec in [s for s in injector.schedule if not s.is_decoy]:
+        real_specs = [s for s in injector.schedule if not s.is_decoy]
+        for spec, score in zip(real_specs, score_report.per_use_case):
             rep = self._settled_report(spec, per_interval, injector, formatter)
-            score = next(s for s in score_report.per_use_case if s.use_case == spec.use_case)
             if rep is not None:
                 findings.append((score, rep))
 

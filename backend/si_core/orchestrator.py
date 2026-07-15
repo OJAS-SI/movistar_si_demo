@@ -28,7 +28,7 @@ import argparse
 import sys
 import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
 from .contracts import DemoConfig, UseCase, default_config, tiny_config
 from .console import ConsoleBuilder, ConsoleModel, render_html, render_text
@@ -87,6 +87,21 @@ class DemoResult:
 # The single-call pipeline
 # ---------------------------------------------------------------------------
 
+def assemble_result(graph: ServiceGraph, injector: FaultInjector,
+                    per_interval: Dict[int, list], config: DemoConfig,
+                    runtime_seconds: float) -> DemoResult:
+    """Build the finished DemoResult from diagnoses that were ALREADY collected, without
+    re-running the engine. This is what lets the live stream compute the pipeline once,
+    interval by interval, and then hand back exactly the same console, scorecard and HTML
+    the batch run would have produced - no second, divergent computation."""
+    formatter = DiagnosisFormatter(graph)
+    harness = ScoringHarness(config)
+    model = ConsoleBuilder(graph).from_collected(injector, per_interval, formatter, harness)
+    return DemoResult(config=config, graph=graph, score_report=model.score_report,
+                      console_model=model, text_console=render_text(model),
+                      html_console=render_html(model), runtime_seconds=runtime_seconds)
+
+
 def run_demo(config: Optional[DemoConfig] = None) -> DemoResult:
     """Wire and run the whole pipeline in data-flow order, deterministically from the
     config seed, and return everything it produced."""
@@ -96,17 +111,9 @@ def run_demo(config: Optional[DemoConfig] = None) -> DemoResult:
     graph = build_service_graph(config)                      # static network
     injector = FaultInjector(graph, config)                  # telemetry + faults + truth
     engine = StructuralIntelligenceEngine(NetworkMap(graph), config)  # four-field detection
-    formatter = DiagnosisFormatter(graph)                    # operator line + receipt
-    harness = ScoringHarness(config)                         # score against truth
-    model = ConsoleBuilder(graph).from_pipeline(injector, engine, formatter, harness)
-
-    text_console = render_text(model)
-    html_console = render_html(model)
-    runtime = time.time() - t0
-
-    return DemoResult(config=config, graph=graph, score_report=model.score_report,
-                      console_model=model, text_console=text_console,
-                      html_console=html_console, runtime_seconds=runtime)
+    per_interval = {t: engine.observe_and_diagnose(t, injector.interval(t).core)
+                    for t in range(config.run_intervals)}
+    return assemble_result(graph, injector, per_interval, config, time.time() - t0)
 
 
 def config_for_scale(scale: str, seed: Optional[int] = None) -> DemoConfig:

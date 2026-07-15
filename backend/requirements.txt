@@ -1,0 +1,5 @@
+# The API layer only. si_core has no dependencies and must never acquire any:
+# it is pure standard library, and the four-field contract is frozen against it.
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.9

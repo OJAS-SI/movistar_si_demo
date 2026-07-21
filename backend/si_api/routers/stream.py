@@ -15,18 +15,24 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from starlette.concurrency import run_in_threadpool
 
 import time
+from typing import List
 
 from si_core.orchestrator import assemble_result
 
-from ..dependencies import StoreWsDep
+from ..dependencies import CatalogueWsDep, StoreWsDep
 from ..schemas import StreamEndOut, StreamErrorOut
-from ..serializers import frame_out
+from ..serializers import cached_frame_out
 from ..services.replay import Done, next_frame, replay
-from ..services.run_store import Run, RunNotFound
+from ..services.run_store import CachedFrame, Run, RunNotFound
 
 router = APIRouter(tags=["stream"])
 
 # WebSocket close codes.
+# How long the stream will wait for a run that is already being computed elsewhere,
+# rather than recomputing it. A full run takes ~84s from cold; beyond this the stream
+# gives up waiting and computes, which is slower but never hangs.
+WARM_WAIT_SECONDS = 150.0
+
 CLOSE_NOT_FOUND = 4404
 CLOSE_INTERNAL = 4500
 
@@ -36,6 +42,7 @@ async def stream_run(
     websocket: WebSocket,
     run_id: str,
     store: StoreWsDep,
+    cat: CatalogueWsDep,
     interval_ms: int = Query(
         default=60, ge=0, le=5000,
         description="Delay between frames, in milliseconds. 0 replays as fast as the "
@@ -57,9 +64,37 @@ async def stream_run(
         return
 
     config = run.config
-    frames = replay(config)
     delay = interval_ms / 1000.0
     started = time.time()
+
+    # A run that has already been streamed once carries every interval it produced. That
+    # is the case a scale toggle hits, and replaying from it costs nothing - where
+    # recomputing the full network costs ~84s. The frames are domain values, so they are
+    # still serialised into this socket's language.
+    # Someone is already computing this run - prewarm at startup, or an eager create.
+    # Wait for it instead of stepping the same 576 intervals a second time.
+    if run.frames is None and run.executing and run.status == "running":
+        try:
+            await run.wait(timeout=WARM_WAIT_SECONDS)
+        except asyncio.TimeoutError:
+            pass                                  # fall through and compute it here
+
+    if run.frames is not None:
+        try:
+            for cached in run.frames:
+                await websocket.send_json(
+                    cached_frame_out(cached, config.run_intervals, cat).model_dump())
+                if delay:
+                    await asyncio.sleep(delay)
+            await websocket.send_json(
+                StreamEndOut(total_intervals=config.run_intervals).model_dump())
+            await websocket.close()
+        except WebSocketDisconnect:
+            pass
+        return
+
+    collected_frames: List[CachedFrame] = []
+    frames = replay(config)
 
     try:
         while True:
@@ -72,10 +107,20 @@ async def stream_run(
                 # store, so the REST console, scorecard and topology become available for a
                 # run that was created lazily (execute=false).
                 await _finalize(run, frame, started)
+                # Only now, complete: a half-collected list would make the next stream
+                # replay a truncated run and look like the engine stopped early.
+                run.frames = collected_frames
                 break
             timestamp, magnitudes, diagnoses, onsets = frame
-            payload = frame_out(timestamp, config.run_intervals, magnitudes, diagnoses, onsets)
-            await websocket.send_json(payload.model_dump())
+            n = len(magnitudes)
+            cached = CachedFrame(
+                timestamp=timestamp, n_core_records=n,
+                mean_magnitude=(sum(magnitudes) / n) if n else 0.0,
+                max_magnitude=max(magnitudes) if magnitudes else 0.0,
+                diagnoses=tuple(diagnoses), fault_onsets=tuple(onsets))
+            collected_frames.append(cached)
+            await websocket.send_json(
+                cached_frame_out(cached, config.run_intervals, cat).model_dump())
             if delay:
                 await asyncio.sleep(delay)
 

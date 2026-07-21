@@ -14,14 +14,13 @@ import { alertStateAt, formationProgress, type Alert } from '../../lib/alerts'
 import {
   bandClass,
   clockAt,
-  layerLabel,
   leadTime,
   num,
   pct,
-  SHAPE_LABEL,
   severityColor,
 } from '../../lib/format'
 import { Icon } from '../Icon'
+import { layerLabelOf, shapeLabelOf, type T } from '../../lib/i18n'
 import { AlertQueue } from './AlertQueue'
 import { Receipt } from './Receipt'
 import { ShapeGraph } from './ShapeGraph'
@@ -34,6 +33,8 @@ interface AnalystTabProps {
   t: number
   frame: StreamFrameOut | null
   intervalSeconds: number
+  /** Named `tr`: `t` is already the interval. */
+  tr: T
 }
 
 export function AnalystTab({
@@ -44,6 +45,7 @@ export function AnalystTab({
   t,
   frame,
   intervalSeconds,
+  tr,
 }: AnalystTabProps) {
   return (
     <div className="analyst">
@@ -54,18 +56,19 @@ export function AnalystTab({
         intervalSeconds={intervalSeconds}
         selected={selected?.useCase ?? null}
         onSelect={onSelect}
+        tr={tr}
       />
 
       <main className="center col">
         {selected && alertStateAt(selected, t) === 'named' ? (
-          <NamedVerdict alert={selected} t={t} intervalSeconds={intervalSeconds} />
+          <NamedVerdict alert={selected} t={t} intervalSeconds={intervalSeconds} tr={tr} />
         ) : (
-          <Watching model={model} frame={frame} t={t} alerts={alerts} intervalSeconds={intervalSeconds} />
+          <Watching model={model} frame={frame} t={t} alerts={alerts} intervalSeconds={intervalSeconds} tr={tr} />
         )}
       </main>
 
       {selected && alertStateAt(selected, t) === 'named' ? (
-        <Receipt panel={selected.panel} />
+        <Receipt panel={selected.panel} tr={tr} />
       ) : (
         <div className="right">
           <div className="rcol col">
@@ -74,13 +77,9 @@ export function AnalystTab({
                 <span className="ico">
                   <Icon name="receipt" />
                 </span>
-                Certified-decision receipt
+                {tr('receipt.emptyTitle')}
               </div>
-              <p className="sub">
-                A receipt is written when — and only when — the engine names an element. Until
-                then there is nothing to certify, and the panel stays empty rather than
-                filling with a guess.
-              </p>
+              <p className="sub">{tr('receipt.empty')}</p>
             </section>
           </div>
         </div>
@@ -96,12 +95,14 @@ function Watching({
   t,
   alerts,
   intervalSeconds,
+  tr,
 }: {
   model: ConsoleOut
   frame: StreamFrameOut | null
   t: number
   alerts: Alert[]
   intervalSeconds: number
+  tr: T
 }) {
   const forming = alerts.filter((alert) => alertStateAt(alert, t) === 'forming')
   const next = alerts
@@ -114,20 +115,17 @@ function Watching({
         <span className="pulse" style={{ background: forming.length ? undefined : 'var(--cyan)' }} />
         <div>
           <h2>
-            {forming.length > 0
-              ? 'A shape is forming — the engine has not yet resolved it'
-              : 'Watching the network'}
+            {forming.length > 0 ? tr('watch.formingTitle') : tr('watch.title')}
           </h2>
           <div className="headmeta" style={{ marginLeft: 0 }}>
             <span className="hm">
-              <b className="mono">{frame?.n_core_records ?? 0}</b> four-field records this
-              interval
+              <b className="mono">{frame?.n_core_records ?? 0}</b> {tr('watch.records')}
             </span>
             <span className="hm">
-              mean magnitude <b className="mono">{num(frame?.mean_magnitude, 2)}</b>
+              {tr('watch.meanMagnitude')} <b className="mono">{num(frame?.mean_magnitude, 2)}</b>
             </span>
             <span className="hm">
-              peak <b className="mono">{num(frame?.max_magnitude, 2)}</b>
+              {tr('watch.peak')} <b className="mono">{num(frame?.max_magnitude, 2)}</b>
             </span>
             <span className="hm">
               <b className="mono">{clockAt(t, intervalSeconds)}</b>
@@ -141,21 +139,17 @@ function Watching({
           <span className="ico">
             <Icon name="eye" />
           </span>
-          What the engine is allowed to see
+          {tr('watch.allowedToSee')}
         </div>
         <p style={{ margin: 0, color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.6 }}>
-          Four fields per record — <span className="mono">entity_src</span>,{' '}
-          <span className="mono">entity_dst</span>, <span className="mono">timestamp</span>,{' '}
-          <span className="mono">magnitude</span>. No error codes, no alarms, no labels. It
-          learns each edge's own baseline from the history it observes, and watches the graph
-          for structure.
+          <span className="mono">entity_src</span>, <span className="mono">entity_dst</span>,{' '}
+          <span className="mono">timestamp</span>, <span className="mono">magnitude</span>.{' '}
+          {tr('watch.allowedToSee.body')}
           {next && (
             <>
               {' '}
-              {forming.length > 0
-                ? 'Something is drifting above baseline right now, but it has not cleared the dwell gate — so nothing is claimed.'
-                : 'Nothing has departed from baseline yet.'}{' '}
-              The next verdict lands at interval <b className="mono">{next.namedAt}</b> (
+              {forming.length > 0 ? tr('watch.drifting') : tr('watch.nothingYet')}{' '}
+              {tr('watch.nextVerdict')} <b className="mono">{next.namedAt}</b> (
               {clockAt(next.namedAt, intervalSeconds)}).
             </>
           )}
@@ -168,25 +162,23 @@ function Watching({
             <span className="ico">
               <Icon name="shield" />
             </span>
-            Holding fire
+            {tr('watch.holdingFire')}
           </div>
           <div className="impact-grid">
             <div className="stat good">
-              <div className="k">Decoys fired</div>
+              <div className="k">{tr('watch.decoysFired')}</div>
               <div className="v">
                 {model.honest.n_decoys_fired}
                 <small> / {model.honest.n_decoys}</small>
               </div>
             </div>
             <div className="stat good">
-              <div className="k">False positives</div>
+              <div className="k">{tr('watch.falsePositives')}</div>
               <div className="v">{pct(model.honest.false_positive_rate, 1)}</div>
             </div>
           </div>
           <p className="shape-note">
-            Benign disturbances — a prime-time surge, a one-off glitch, a reboot — are injected
-            deliberately. An engine that fired on them would be useless in an operations room,
-            so what it <b>ignores</b> is measured just as carefully as what it catches.
+            {tr('watch.holdingFire.body')}
           </p>
         </div>
 
@@ -195,20 +187,20 @@ function Watching({
             <span className="ico">
               <Icon name="alert" />
             </span>
-            Forming, not yet named
+            {tr('watch.formingNotNamed')}
           </div>
           {forming.length === 0 ? (
             <p style={{ margin: 0, color: 'var(--muted)', fontSize: 12 }}>
-              Nothing is forming at this interval.
+              {tr('watch.nothingForming')}
             </p>
           ) : (
             forming.map((alert) => (
-              <div key={alert.useCase} className="mini-alert">
+              <div key={alert.id} className="mini-alert">
                 <span className="md" style={{ background: 'var(--amber)' }} />
                 <div>
                   <div className="mt">{alert.panel.region}</div>
                   <div className="me">
-                    began at interval {alert.onsetAt} · named at {alert.namedAt}
+                    {tr('watch.beganAt')} {alert.onsetAt} · {tr('watch.namedAt')} {alert.namedAt}
                   </div>
                 </div>
               </div>
@@ -225,10 +217,12 @@ function NamedVerdict({
   alert,
   t,
   intervalSeconds,
+  tr,
 }: {
   alert: Alert
   t: number
   intervalSeconds: number
+  tr: T
 }) {
   const { panel } = alert
   const diagnosis = panel.report.diagnosis
@@ -245,45 +239,56 @@ function NamedVerdict({
       <div className="alert-head">
         <span className={`pulse${alert.severity === 'warn' ? ' warn' : ''}`} />
         <div>
-          <h2>{panel.report.headline}</h2>
+          {/* The heading names the element and what is wrong with it. The engine's full
+              sentence is NOT repeated here - it is already the claim on the receipt in
+              the right-hand panel, and printing it twice cost the header two lines it
+              could not spare. The full text stays available as the heading's tooltip. */}
+          <h2 title={panel.report.headline}>
+            {panel.report.headline_short || panel.report.headline}
+          </h2>
 
           <div className="headmeta">
             <span className="hm">
-              element <b className="mono">{panel.entity}</b>
+              {tr('verdict.element')} <b className="mono">{panel.entity}</b>
             </span>
             <span className="hm">
-              layer <b>{layerLabel(panel.layer)}</b>
+              {tr('verdict.layer')} <b>{layerLabelOf(panel.layer, tr)}</b>
             </span>
             <span className="hm">
-              shape <b>{SHAPE_LABEL[panel.shape]}</b>
+              {tr('verdict.shape')} <b>{shapeLabelOf(panel.shape, tr)}</b>
             </span>
             <span className="hm">
-              region <b>{panel.region}</b>
+              {tr('verdict.region')} <b>{panel.region}</b>
             </span>
             {score.mean_lead_time_minutes !== null && (
               <span className="hm lead">
-                caught <b>{leadTime(score.mean_lead_time_minutes)}</b> before it would surface
+                {tr('verdict.caught')} <b>{leadTime(score.mean_lead_time_minutes)}</b>{' '}
+                {tr('verdict.beforeSurfacing')}
               </span>
             )}
             {diagnosis && (
               <span className="hm conf">
-                confidence <b className="mono">{pct(diagnosis.confidence)}</b>
+                {tr('verdict.confidence')} <b className="mono">{pct(diagnosis.confidence)}</b>
               </span>
             )}
           </div>
         </div>
       </div>
 
-      <div className="grid2">
-        <div className="card">
-          <div className="ct">
-            <span className="ico">
-              <Icon name="network" />
-            </span>
-            The shape on the graph
-          </div>
-          <ShapeGraph panel={panel} progress={progress} named={t >= alert.namedAt} />
-          <p className="shape-note">
+      {/* Two columns that both run to the transport bar, so their bottoms line up and
+          no vertical space is left dead. The graph takes whatever the left column has
+          left over after the narrative beneath it. */}
+      <div className="verdict-grid">
+        <div className="vcol">
+          <div className="card shape-card">
+            <div className="ct">
+              <span className="ico">
+                <Icon name="network" />
+              </span>
+              {tr('verdict.shapeOnGraph')}
+            </div>
+            <ShapeGraph tr={tr} panel={panel} progress={progress} named={t >= alert.namedAt} />
+            <p className="shape-note">
             {panel.shape === 'single' ? (
               <>
                 One home is impaired while every peer on <b>{panel.entity.split('-').slice(0, 2).join('-')}</b>{' '}
@@ -307,27 +312,56 @@ function NamedVerdict({
                 <b>{panel.entity}</b>. Only a shared content source explains that.
               </>
             )}
-          </p>
+            </p>
+          </div>
+
+          {/* The four beats, moved out of a full-width strip and under the graph: they
+              are the same argument the shape makes, read in order. */}
+          <div className="card narrative-card">
+            <div className="ct">
+              <span className="ico">
+                <Icon name="graph" />
+              </span>
+              {tr('verdict.detectionNarrative')}
+            </div>
+            <div className="beats">
+              {panel.beats.map((beat, index) => (
+                <div
+                  key={beat.name}
+                  className={`beat${
+                    index === activeBeat ? ' on' : index < activeBeat ? ' done' : ''
+                  }`}
+                >
+                  <div className="n">0{index + 1}</div>
+                  <h4>{beat.name}</h4>
+                  <p title={beat.text}>{beat.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div>
-          <div className="card">
+        <div className="vcol">
+          <div className="card call-card">
             <div className="ct">
               <span className="ico">
                 <Icon name="target" />
               </span>
-              The call
+              {tr('verdict.theCall')}
             </div>
 
             <div className="shi-flex">
               <Gauge value={diagnosis?.confidence ?? 0} color={severityColor(alert.severity)} />
               <div className="shi-info">
                 <h4>{panel.entity}</h4>
-                <span className={`shi-band ${bandClass(panel.report.health_band)}`}>
-                  {panel.report.health_band}
+                <span
+                  className={`shi-band ${bandClass(panel.report.health_band)}`}
+                  title={panel.report.health_band}
+                >
+                  {panel.report.health_band_short || panel.report.health_band}
                 </span>
                 <p>
-                  Named at interval <b className="mono">{alert.namedAt}</b> (
+                  {tr('verdict.namedAt')} <b className="mono">{alert.namedAt}</b> (
                   {clockAt(alert.namedAt, intervalSeconds)})
                   {alert.onsetAt !== null && (
                     <>
@@ -356,55 +390,43 @@ function NamedVerdict({
             </div>
           </div>
 
-          <div className="card" style={{ marginTop: 14 }}>
+          <div className="card measured-card">
             <div className="ct">
               <span className="ico">
                 <Icon name="graph" />
               </span>
-              Measured against ground truth
+              {tr('measured.title')}
             </div>
             <div className="impact-grid">
               <div className="stat hot">
-                <div className="k">Homes affected</div>
+                <div className="k">{tr('measured.homesAffected')}</div>
                 <div className="v">{panel.affected.length}</div>
               </div>
               <div className="stat good">
-                <div className="k">Lead time</div>
+                <div className="k">{tr('measured.leadTime')}</div>
                 <div className="v">{leadTime(score.mean_lead_time_minutes)}</div>
               </div>
               <div className="stat good">
-                <div className="k">Localization</div>
+                <div className="k">{tr('measured.localization')}</div>
                 <div className="v">{pct(score.localization_accuracy)}</div>
               </div>
               <div className="stat good">
-                <div className="k">Layer attribution</div>
+                <div className="k">{tr('measured.layerAttribution')}</div>
                 <div className="v">{pct(score.layer_attribution_accuracy)}</div>
               </div>
             </div>
             {score.box_swap_discrimination !== null && (
               <p className="shape-note">
-                <b>Box-swap discrimination {pct(score.box_swap_discrimination)}.</b> The
-                signature survives a set-top-box replacement, so the box is exonerated and the
-                futile swap is avoided.
+                <b>
+                  {tr('measured.boxSwap')} {pct(score.box_swap_discrimination)}.
+                </b>{' '}
+                {tr('measured.boxSwap.body')}
               </p>
             )}
           </div>
         </div>
       </div>
 
-      {/* The four beats: stream, form, predict, prescribe. */}
-      <div className="beats" style={{ marginTop: 18 }}>
-        {panel.beats.map((beat, index) => (
-          <div
-            key={beat.name}
-            className={`beat${index === activeBeat ? ' on' : index < activeBeat ? ' done' : ''}`}
-          >
-            <div className="n">0{index + 1}</div>
-            <h4>{beat.name}</h4>
-            <p>{beat.text}</p>
-          </div>
-        ))}
-      </div>
     </>
   )
 }

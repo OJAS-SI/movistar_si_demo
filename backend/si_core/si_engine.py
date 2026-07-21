@@ -59,9 +59,10 @@ from dataclasses import dataclass, field
 from typing import Deque, Dict, List, Optional, Set, Tuple
 
 from .contracts import (
-    DemoConfig, Diagnosis, EntityType, Evidence, Layer, PredictedTrajectory,
-    Provenance, Shape, assert_core_stream_clean,
+    ActionCode, DemoConfig, Diagnosis, EntityType, Evidence, Layer, Msg,
+    PredictedTrajectory, Provenance, Shape, assert_core_stream_clean,
 )
+from .messages import render, render_all
 from .topology import ServiceGraph
 
 
@@ -71,7 +72,9 @@ from .topology import ServiceGraph
 
 class NetworkMap:
     """The operator's known network wiring, derived from the service graph: each
-    node's layer, and the groupings of homes by the access node, route, and content
+    node's layer, and the groupings of homes by the access node, ro
+
+    ute, and content
     they sit behind. Used only to name the layer of a convergence."""
 
     def __init__(self, graph: ServiceGraph) -> None:
@@ -258,7 +261,8 @@ class StructuralIntelligenceEngine:
                         timestamp=t, detected=False, abstained=True, entity_id=None,
                         layer=None, shape=Shape.NONE, confidence=round(min(0.49, 0.3 + 0.02 * len(elevated_now & behind)), 3),
                         trajectory=trajectory, evidence=self._evidence_abstain(t, homes, dst),
-                        recommended_action="a cluster may be forming on this access node, watch and confirm")
+                        recommended_action=render(Msg("action.watch_and_confirm", {})),
+                        action_code=ActionCode.WATCH_AND_CONFIRM)
                 # a genuinely isolated home: its access-node peers are not rising
                 shape, out_layer = Shape.SINGLE, Layer.HOME
                 entity = max(homes, key=lambda h: dep_on.get((h, dst), 0.0))
@@ -279,15 +283,17 @@ class StructuralIntelligenceEngine:
             return Diagnosis(
                 timestamp=t, detected=False, abstained=True, entity_id=None, layer=None,
                 shape=Shape.NONE, confidence=round(confidence, 3), trajectory=trajectory,
-                evidence=self._evidence_abstain(t, homes, dst), recommended_action=
-                "insufficient or ambiguous evidence, escalate to human review")
+                evidence=self._evidence_abstain(t, homes, dst),
+                recommended_action=render(Msg("action.escalate_to_human", {})),
+                action_code=ActionCode.ESCALATE_TO_HUMAN)
 
         return Diagnosis(
             timestamp=t, detected=True, abstained=False, entity_id=entity,
             layer=out_layer, shape=shape, confidence=round(confidence, 3),
             trajectory=trajectory,
             evidence=self._evidence_detect(t, shape, out_layer, entity, homes, dst, mean_dep, behind),
-            recommended_action=self._action(shape, out_layer))
+            recommended_action=self._action(shape, out_layer),
+            action_code=self._action_code(shape))
 
     def _confidence(self, dominance: float, mean_dep: float, homes: Set[str], dst: str) -> float:
         strength = min(1.0, mean_dep / (2.0 * self.p.sigma_threshold)) if mean_dep > 0 else 0.5
@@ -309,54 +315,63 @@ class StructuralIntelligenceEngine:
             if rising:
                 # rough projection: continue the trend a few intervals out
                 horizon = t + max(3, (t - first[0]))
-        detail = "convergence widening" if rising else "convergence steady"
-        return PredictedTrajectory(rising=rising, horizon_interval=horizon, detail=detail)
+        detail_msg = Msg("trajectory.widening" if rising else "trajectory.steady", {})
+        return PredictedTrajectory(rising=rising, horizon_interval=horizon,
+                                   detail=render(detail_msg), detail_msg=detail_msg)
 
     # ---- the certified-decision receipt, in the external register ----
 
     def _evidence_detect(self, t: int, shape: Shape, layer: Layer, entity: str,
                          homes: Set[str], dst: str, mean_dep: float, behind: Set[str]) -> Evidence:
+        # The receipt is built once, as messages. The English is then rendered from the
+        # same messages rather than written a second time beside them: two hand-written
+        # registers drift the moment one is edited alone, and a receipt that disagrees
+        # with itself across languages is worse than one that is merely untranslated.
         n = len(homes)
-        if shape == Shape.CLUSTER:
-            claim = f"Access node {entity} degrading: {n} homes behind it with rising impairment"
-            check = ("the elevated homes share one access node and their other subsystems "
-                     "are within baseline, inconsistent with a content or core fault")
-        elif shape == Shape.SINGLE:
-            claim = f"Household {entity} degrading in isolation; its access-node peers are healthy"
-            check = ("only this home is elevated while its node peers remain at baseline, "
-                     "inconsistent with a shared network fault")
-        elif shape == Shape.PATH:
-            claim = f"Core route {entity} degrading: homes across several access nodes impaired together"
-            check = ("the elevated homes span multiple access nodes but share one core route, "
-                     "inconsistent with a single-node or content fault")
-        else:
-            claim = f"Content source {entity} degrading: otherwise-unrelated homes impaired together"
-            check = ("the elevated homes span many access nodes but share one content source, "
-                     "inconsistent with an access-node fault")
-        supporting = (
-            f"{n} homes elevated and sustained beyond the dwell threshold",
-            f"mean departure {mean_dep:.1f} standard deviations above the learned baseline",
-            f"{len(homes & behind)} of {n} elevated homes sit behind {dst} by the network map")
+        claim_msg = Msg(f"receipt.claim.{shape.value}", {"entity": entity, "n": n})
+        check_msg = Msg(f"receipt.check.{shape.value}", {})
+        supporting_msgs = (
+            Msg("receipt.support.elevated_sustained", {"n": n}),
+            Msg("receipt.support.mean_departure", {"sigma": round(mean_dep, 1)}),
+            Msg("receipt.support.behind_node",
+                {"n_behind": len(homes & behind), "n": n, "dst": dst}),
+        )
+        note_msg = Msg("provenance.four_field_only", {})
         prov = Provenance(interval_start=max(0, t - self.p.history), interval_end=t,
                           entities_examined=tuple(sorted(homes)),
-                          note="four-field magnitude stream only; baselines learned from history")
-        return Evidence(claim=claim, supporting=supporting, check=check, provenance=prov)
+                          note=render(note_msg), note_msg=note_msg)
+        return Evidence(claim=render(claim_msg), supporting=tuple(render_all(supporting_msgs)),
+                        check=render(check_msg), provenance=prov,
+                        claim_msg=claim_msg, supporting_msgs=supporting_msgs,
+                        check_msg=check_msg)
 
     def _evidence_abstain(self, t: int, homes: Set[str], dst: str) -> Evidence:
+        claim_msg = Msg("receipt.claim.abstain", {})
+        check_msg = Msg("receipt.check.abstain", {})
+        supporting_msgs = (
+            Msg("receipt.support.elevated_near", {"n": len(homes), "dst": dst}),
+            Msg("receipt.support.convergence_weak", {}),
+        )
+        note_msg = Msg("provenance.competence_boundary", {})
         return Evidence(
-            claim="A disturbance is forming but the evidence will not yet resolve to a layer",
-            supporting=(f"{len(homes)} homes elevated near {dst}",
-                        "convergence weak or ambiguous; confidence below the action threshold"),
-            check="the structural signature is not yet strong or clean enough to attribute",
+            claim=render(claim_msg), supporting=tuple(render_all(supporting_msgs)),
+            check=render(check_msg),
+            claim_msg=claim_msg, supporting_msgs=supporting_msgs, check_msg=check_msg,
             provenance=Provenance(interval_start=max(0, t - self.p.history), interval_end=t,
                                   entities_examined=tuple(sorted(homes)),
-                                  note="competence boundary reached; deferring to human"))
+                                  note_msg=note_msg, note=render(note_msg)))
+
+    # What each shape licenses, as a decision. The wording lives in the catalogues, so
+    # scoring consults the code and nothing downstream ever parses prose.
+    _ACTIONS: Dict[Shape, ActionCode] = {
+        Shape.CLUSTER: ActionCode.INSPECT_ACCESS_NODE,
+        Shape.SINGLE: ActionCode.CONTACT_CUSTOMER_GATEWAY,
+        Shape.PATH: ActionCode.INVESTIGATE_CORE_ROUTE,
+        Shape.SOURCE: ActionCode.INVESTIGATE_CONTENT_SOURCE,
+    }
 
     def _action(self, shape: Shape, layer: Layer) -> str:
-        if shape == Shape.CLUSTER:
-            return "inspect the access node and its aggregation before complaints escalate"
-        if shape == Shape.SINGLE:
-            return "proactive customer contact and gateway reconfiguration, no truck roll"
-        if shape == Shape.PATH:
-            return "investigate the core transport route carrying the affected homes"
-        return "investigate the content source and its delivery path"
+        return render(Msg(f"action.{self._action_code(shape).value}", {}))
+
+    def _action_code(self, shape: Shape) -> ActionCode:
+        return self._ACTIONS.get(shape, ActionCode.INVESTIGATE_CONTENT_SOURCE)

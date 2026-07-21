@@ -72,6 +72,9 @@ class RunOut(Schema):
     created_at: float
     config: ConfigOut
     runtime_seconds: Optional[float] = None
+    # True when this run is computed AND its replay is cached, i.e. selecting this scale
+    # will render immediately rather than computing.
+    warm: bool = False
     passed: Optional[bool] = Field(
         default=None,
         description="The internal self-test: all faults detected and attributed, box "
@@ -138,6 +141,9 @@ class DiagnosisOut(Schema):
     shape: str
     confidence: float
     recommended_action: Optional[str]
+    # The recommendation as a stable code. `recommended_action` is prose and changes
+    # with the requested language; anything programmatic should read this instead.
+    action_code: Optional[str] = None
     trajectory: Optional[TrajectoryOut]
     evidence: Optional[EvidenceOut]
 
@@ -156,6 +162,10 @@ class ReportOut(Schema):
     kind: str
     headline: str
     health_band: str
+    # Title forms of the two above, for a heading and a badge. Same facts, fewer words;
+    # they fall back to the full text when a catalogue has no short wording.
+    headline_short: str = ""
+    health_band_short: str = ""
     receipt: Optional[ReceiptOut]
     diagnosis: Optional[DiagnosisOut]
 
@@ -204,6 +214,9 @@ class BeatOut(Schema):
 class FaultPanelOut(Schema):
     use_case: str
     title: str
+    # Ground-truth onset for THIS fault. `use_case` does not identify a panel - a full
+    # run has 13 uc1 panels - so the client must not join onsets by use case.
+    onset_interval: Optional[int] = None
     beats: List[BeatOut]
     entity: str
     region: str

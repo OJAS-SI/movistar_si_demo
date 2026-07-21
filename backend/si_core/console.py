@@ -29,8 +29,9 @@ import os
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from .contracts import Diagnosis, Layer, SHAPE_TO_LAYER, Score, Shape, UseCase
+from .contracts import Diagnosis, Layer, Msg, SHAPE_TO_LAYER, Score, Shape, UseCase
 from .diagnosis import DiagnosisFormatter, DiagnosisReport
+from .messages import render
 from .scoring import ScoreReport, ScoringHarness
 from .topology import ServiceGraph
 
@@ -43,6 +44,8 @@ from .topology import ServiceGraph
 class Beat:
     name: str
     text: str
+    name_msg: Optional[Msg] = None
+    text_msg: Optional[Msg] = None
 
 
 @dataclass
@@ -56,6 +59,11 @@ class FaultPanel:
     entity: str
     region: str
     affected: Tuple[str, ...]
+    title_msg: Optional[Msg] = None
+    # The interval this fault truly began, from ground truth. Carried per panel because
+    # a full run has 13 separate uc1 faults: the use case cannot identify which onset
+    # belongs to which verdict, and the fault ids on the stream do not name an entity.
+    onset_interval: Optional[int] = None
 
 
 @dataclass
@@ -76,15 +84,8 @@ class ConsoleModel:
     fault_panels: List[FaultPanel]
     honest: HonestPanel
     score_report: ScoreReport
-
-
-_TITLES = {
-    UseCase.UC1_NETWORK_NODE: "A network node degrading (gradual access fault)",
-    UseCase.UC2_INDIVIDUAL: "An individual household degrading (isolated, peers healthy)",
-    UseCase.UC3_INVISIBLE: "An invisible fault that survives a set-top-box swap",
-    UseCase.UC4_CORE_PATH: "A core-transport route degrading (a path across access nodes)",
-    UseCase.UC5_CONTENT_SOURCE: "A content source degrading (unrelated homes, one source)",
-}
+    subtitle_msg: Optional[Msg] = None
+    config_summary_msg: Optional[Msg] = None
 
 
 # ---------------------------------------------------------------------------
@@ -120,13 +121,15 @@ class ConsoleBuilder:
         # category (e.g. several access-node clusters across regions).
         findings: List[Tuple[Score, DiagnosisReport]] = []
         real_specs = [s for s in injector.schedule if not s.is_decoy]
+        onsets: List[Optional[int]] = []
         for spec, score in zip(real_specs, score_report.per_use_case):
             rep = self._settled_report(spec, per_interval, injector, formatter)
             if rep is not None:
                 findings.append((score, rep))
+                onsets.append(spec.onset)
 
         abstention = self._first_abstention(per_interval, injector, formatter)
-        return self.build(findings, score_report, abstention)
+        return self.build(findings, score_report, abstention, onsets)
 
     def _settled_report(self, spec, per_interval, injector,
                         formatter: DiagnosisFormatter) -> Optional[DiagnosisReport]:
@@ -161,26 +164,32 @@ class ConsoleBuilder:
 
     def build(self, findings: List[Tuple[Score, DiagnosisReport]],
               score_report: ScoreReport,
-              abstention: Optional[DiagnosisReport]) -> ConsoleModel:
+              abstention: Optional[DiagnosisReport],
+              onsets: Optional[List[Optional[int]]] = None) -> ConsoleModel:
         n_homes = len(self.graph.stb_ids)
         n_olts = len(self.graph.olt_ids)
         n_regions = len(self.graph.config.regions)
         run = self.graph.config.run_intervals
         cadence = self.graph.config.interval_seconds // 60
-        config_summary = (f"{n_homes} homes, {n_olts} access nodes, {n_regions} regions, "
-                          f"{run} intervals at {cadence} min cadence")
+        config_summary_msg = Msg("console.config_summary",
+                                 {"homes": n_homes, "olts": n_olts, "regions": n_regions,
+                                  "intervals": run, "cadence": cadence})
+        config_summary = render(config_summary_msg)
 
         panels: List[FaultPanel] = []
-        for score, rep in findings:
+        onsets = onsets or [None] * len(findings)
+        for (score, rep), onset in zip(findings, onsets):
             d = rep.diagnosis
             entity = d.entity_id
             node = self.graph.nodes.get(entity)
             region = node.region if node else "national"
             affected = d.evidence.provenance.entities_examined if d.evidence else ()
+            title_msg = Msg(f"panel.title.{score.use_case.value}", {})
             panels.append(FaultPanel(
-                use_case=score.use_case, title=_TITLES.get(score.use_case, score.use_case.value),
+                use_case=score.use_case, title=render(title_msg), title_msg=title_msg,
                 beats=self._beats(n_homes, n_regions, rep, score), report=rep, score=score,
-                shape=d.shape, entity=entity, region=region, affected=affected))
+                shape=d.shape, entity=entity, region=region, affected=affected,
+                onset_interval=onset))
 
         honest = HonestPanel(
             abstention=abstention, n_decoys=score_report.n_decoys,
@@ -189,35 +198,46 @@ class ConsoleBuilder:
             n_non_fault_intervals=score_report.n_non_fault_intervals,
             n_spurious_intervals=score_report.n_spurious_intervals)
 
+        # The product name is a name, not a sentence, so it is not translated. Everything
+        # around it is.
+        subtitle_msg = Msg("console.subtitle", {})
         return ConsoleModel(
             title="Movistar Service Intelligence",
-            subtitle="powered by Structural Intelligence  |  synthetic demo, no Telefonica data",
-            config_summary=config_summary, fault_panels=panels, honest=honest,
-            score_report=score_report)
+            subtitle=render(subtitle_msg), subtitle_msg=subtitle_msg,
+            config_summary=config_summary, config_summary_msg=config_summary_msg,
+            fault_panels=panels, honest=honest, score_report=score_report)
 
     def _beats(self, n_homes: int, n_regions: int, rep: DiagnosisReport,
                score: Score) -> List[Beat]:
         d = rep.diagnosis
-        shape_word = {Shape.CLUSTER: "A cluster", Shape.SINGLE: "A single home",
-                      Shape.PATH: "A path", Shape.SOURCE: "A source"}.get(d.shape, "A shape")
-        layer_word = (d.layer.value if d.layer else "unknown")
-        stream = (f"{n_homes} homes across {n_regions} regions stream four-field telemetry; "
-                  f"the engine learns normal and watches the graph for structure.")
-        form = f"{shape_word} forms on the {layer_word} layer: {d.shape.value} signature on {d.entity_id}."
+        stream = Msg("beat.stream.text", {"homes": n_homes, "regions": n_regions})
+        # The shape and layer are closed vocabularies, so each gets its own key rather
+        # than an English word interpolated into a Spanish sentence.
+        form = Msg(f"beat.form.text.{d.shape.value}",
+                   {"layer": Msg(f"layer.{d.layer.value}" if d.layer else "layer.unknown", {}),
+                    "entity": d.entity_id})
         traj = d.trajectory
+        detail = traj.detail_msg if traj and traj.detail_msg else Msg("trajectory.steady", {})
         if traj and traj.rising and traj.horizon_interval is not None:
-            predict = (f"Projected to widen ({traj.detail}); on the current trend it would "
-                       f"broaden around interval {traj.horizon_interval} if untreated.")
+            predict = Msg("beat.predict.text.widening_horizon",
+                          {"detail": detail, "horizon": traj.horizon_interval})
         elif traj and traj.rising:
-            predict = f"Projected to widen ({traj.detail})."
+            predict = Msg("beat.predict.text.widening", {"detail": detail})
         else:
-            predict = "Projected steady; the engine keeps watching for change."
+            predict = Msg("beat.predict.text.steady", {})
+
         lead = score.mean_lead_time_intervals
-        mins = f"{lead * self.graph.config.interval_seconds / 60:.0f} min" if lead is not None else "n/a"
-        prescribe = (f"{d.recommended_action}. Flagged {mins} before the fault would surface; "
-                     f"see the certified-decision receipt.")
-        return [Beat("Stream", stream), Beat("Form", form),
-                Beat("Predict", predict), Beat("Prescribe", prescribe)]
+        action = Msg(f"action.{d.action_code.value}", {}) if d.action_code else None
+        if lead is not None:
+            mins = f"{lead * self.graph.config.interval_seconds / 60:.0f}"
+            prescribe = Msg("beat.prescribe.text", {"action": action, "minutes": mins})
+        else:
+            prescribe = Msg("beat.prescribe.text.no_lead", {"action": action})
+
+        names = ["beat.stream", "beat.form", "beat.predict", "beat.prescribe"]
+        return [Beat(name=render(Msg(n, {})), text=render(t),
+                     name_msg=Msg(n, {}), text_msg=t)
+                for n, t in zip(names, [stream, form, predict, prescribe])]
 
 
 # ---------------------------------------------------------------------------

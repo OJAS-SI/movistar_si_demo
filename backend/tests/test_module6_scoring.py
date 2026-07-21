@@ -193,14 +193,26 @@ def test_box_swap_flips_when_box_is_blamed():
 
 def test_action_correctness_rejects_box_swap_for_access():
     assert ScoringHarness._action_ok(c.Shape.CLUSTER, c.Layer.ACCESS,
-                                     "inspect the access node") is True
+                                     c.ActionCode.INSPECT_ACCESS_NODE) is True
     assert ScoringHarness._action_ok(c.Shape.CLUSTER, c.Layer.ACCESS,
-                                     "swap the box") is False
+                                     c.ActionCode.SWAP_SET_TOP_BOX) is False
     # right category for a home fault
     assert ScoringHarness._action_ok(c.Shape.SINGLE, c.Layer.HOME,
-                                     "proactive customer contact") is True
+                                     c.ActionCode.CONTACT_CUSTOMER_GATEWAY) is True
     # wrong category: a single/home action for an access fault
-    assert ScoringHarness._action_ok(c.Shape.SINGLE, c.Layer.ACCESS, "contact") is False
+    assert ScoringHarness._action_ok(c.Shape.SINGLE, c.Layer.ACCESS,
+                                     c.ActionCode.CONTACT_CUSTOMER_GATEWAY) is False
+
+
+def test_box_swap_rejection_does_not_depend_on_language():
+    """The check must survive translation. It once asked whether the recommendation
+    contained the word "box", which would have silently passed on Spanish prose while
+    measuring nothing - the demo would still have reported box-swap discrimination."""
+    assert ScoringHarness._action_ok(c.Shape.CLUSTER, c.Layer.ACCESS,
+                                     c.ActionCode.SWAP_SET_TOP_BOX) is False
+    # the code carries the decision, so no wording in any language can smuggle it past
+    assert c.ActionCode.SWAP_SET_TOP_BOX.is_box_swap is True
+    assert c.ActionCode.INSPECT_ACCESS_NODE.is_box_swap is False
 
 
 # ---------------------------------------------------------------------------

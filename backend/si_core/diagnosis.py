@@ -26,9 +26,10 @@ and a cross-check, nothing more.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
-from .contracts import Diagnosis, Layer, Shape
+from .contracts import ActionCode, Diagnosis, Layer, Msg, Shape
+from .messages import render, render_all
 from .telemetry import IntervalTelemetry, TelemetryGenerator
 from .topology import ServiceGraph
 
@@ -41,24 +42,39 @@ from .topology import ServiceGraph
 class ReceiptCard:
     """A certified-decision receipt in the external register: a claim, the supporting
     facts (structural plus joined corroboration), an independent cross-check, the
-    provenance of the verdict, and a confidence."""
+    provenance of the verdict, and a confidence.
+
+    Every prose leg travels twice: as English, and as the language-free Msg it was
+    built from. See DiagnosisReport for why."""
     claim: str
     evidence_lines: List[str]
     check: str
     provenance: str
     confidence: float
+    claim_msg: Optional[Msg] = None
+    evidence_msgs: List[Msg] = field(default_factory=list)
+    check_msg: Optional[Msg] = None
+    provenance_msg: Optional[Msg] = None
 
 
 @dataclass
 class DiagnosisReport:
     """The operator-facing output for one verdict: a one-line recommendation, a
-    Structural Health Index band, and the receipt beneath it."""
+    Structural Health Index band, and the receipt beneath it.
+
+    The English fields are what the text console and the HTML export have always
+    printed, and they stay. Beside each sits the Msg it was assembled from, so the web
+    console can ask for the same sentence in Spanish without this module knowing that
+    Spanish exists. The pair is written in one place; they must not drift.
+    """
     timestamp: int
     kind: str                  # "detection" | "abstention" | "all_clear"
     headline: str
     health_band: str
     receipt: Optional[ReceiptCard]
     diagnosis: Optional[Diagnosis] = None
+    headline_msg: Optional[Msg] = None
+    health_band_msg: Optional[Msg] = None
 
     def render(self) -> str:
         lines = [self.headline, f"Structural Health Index: {self.health_band}"]
@@ -99,10 +115,12 @@ class DiagnosisFormatter:
         return self.all_clear(diagnosis.timestamp)
 
     def all_clear(self, t: int) -> DiagnosisReport:
+        headline_msg, band_msg = Msg("headline.all_clear", {}), Msg("band.healthy", {})
         return DiagnosisReport(
             timestamp=t, kind="all_clear",
-            headline="All clear: no forming fault across the monitored network.",
-            health_band="healthy", receipt=None, diagnosis=None)
+            headline=render(headline_msg), health_band=render(band_msg),
+            receipt=None, diagnosis=None,
+            headline_msg=headline_msg, health_band_msg=band_msg)
 
     # ----- detection -----
 
@@ -119,40 +137,45 @@ class DiagnosisFormatter:
         band = self._health_band(d, n)
         corroboration = self._corroboration(entity, layer, shape, affected, it)
 
+        # The recommendation is nested rather than interpolated: a catalogue renders the
+        # action in the caller's language and drops it into the headline of that same
+        # language, so the sentence never ends up half-translated.
+        action_msg = Msg(f"action.{d.action_code.value}", {}) if d.action_code else None
+
         if shape == Shape.CLUSTER:
-            headline = (f"Access node {entity} ({place}) degrading: {n} homes with rising "
-                        f"freeze/re-tune over the past ~{minutes} min, signature local access "
-                        f"cluster. Recommended: {d.recommended_action}.")
+            headline_msg = Msg("headline.cluster", {"entity": entity, "place": place, "n": n,
+                                                    "minutes": minutes, "action": action_msg})
         elif shape == Shape.SINGLE:
-            headline = (f"Household {entity} ({place}) degrading in isolation: rising "
-                        f"freeze with weak home connectivity over the past ~{minutes} min, "
-                        f"peers on the access node healthy, signature isolated home gateway. "
-                        f"Recommended: {d.recommended_action}.")
+            headline_msg = Msg("headline.single", {"entity": entity, "place": place,
+                                                   "minutes": minutes, "action": action_msg})
         elif shape == Shape.PATH:
-            headline = (f"Core route {entity} degrading: {n} homes across {n_access} access "
-                        f"nodes impaired together over the past ~{minutes} min, signature "
-                        f"shared core transport. Recommended: {d.recommended_action}.")
+            headline_msg = Msg("headline.path", {"entity": entity, "n": n, "n_access": n_access,
+                                                  "minutes": minutes, "action": action_msg})
         else:  # SOURCE
             channel = self.graph.nodes[entity].identity.get("channel_name", entity)
-            headline = (f"Content source {entity} ({channel}) degrading: {n} homes across "
-                        f"{n_access} access nodes watching it impaired over the past "
-                        f"~{minutes} min, signature shared content source. "
-                        f"Recommended: {d.recommended_action}.")
+            headline_msg = Msg("headline.source", {"entity": entity, "channel": channel, "n": n,
+                                                   "n_access": n_access, "minutes": minutes,
+                                                   "action": action_msg})
 
         receipt = self._receipt(d, corroboration)
-        return DiagnosisReport(timestamp=d.timestamp, kind="detection", headline=headline,
-                               health_band=band, receipt=receipt, diagnosis=d)
+        return DiagnosisReport(timestamp=d.timestamp, kind="detection",
+                               headline=render(headline_msg),
+                               health_band=band, receipt=receipt, diagnosis=d,
+                               headline_msg=headline_msg,
+                               health_band_msg=self._health_band_msg(d, n))
 
     # ----- abstention -----
 
     def _format_abstention(self, d: Diagnosis, it: IntervalTelemetry) -> DiagnosisReport:
-        tail = d.recommended_action or "insufficient evidence, escalate to human review"
-        tail = tail[0].upper() + tail[1:] if tail else tail
-        headline = ("Competence boundary: a disturbance is forming but the evidence will "
-                    "not yet resolve to a layer. " + tail + ".")
+        code = d.action_code or ActionCode.ESCALATE_TO_HUMAN
+        headline_msg = Msg("headline.abstention",
+                           {"action": Msg(f"action.{code.value}", {})})
+        band_msg = Msg("band.watch", {})
         receipt = self._receipt(d, corroboration=[])
-        return DiagnosisReport(timestamp=d.timestamp, kind="abstention", headline=headline,
-                               health_band="watch", receipt=receipt, diagnosis=d)
+        return DiagnosisReport(timestamp=d.timestamp, kind="abstention",
+                               headline=render(headline_msg),
+                               health_band=render(band_msg), receipt=receipt, diagnosis=d,
+                               headline_msg=headline_msg, health_band_msg=band_msg)
 
     # ----- helpers -----
 
@@ -171,56 +194,69 @@ class DiagnosisFormatter:
         return f"{node.region} / {central}" if central else node.region
 
     def _health_band(self, d: Diagnosis, n_affected: int) -> str:
+        return render(self._health_band_msg(d, n_affected))
+
+    def _health_band_msg(self, d: Diagnosis, n_affected: int) -> Msg:
+        return Msg(self._band_key(d, n_affected), {})
+
+    @staticmethod
+    def _band_key(d: Diagnosis, n_affected: int) -> str:
         if d.shape == Shape.SINGLE:
-            return "degraded for the household"
+            return "band.degraded_household"
         if d.confidence >= 0.85 and n_affected >= 3:
-            return "critical for the affected element"
+            return "band.critical_element"
         if d.confidence >= 0.6:
-            return "degraded for the affected element"
-        return "watch"
+            return "band.degraded_element"
+        return "band.watch"
 
     def _corroboration(self, entity: str, layer: Layer, shape: Shape,
-                       affected: List[str], it: IntervalTelemetry) -> List[str]:
+                       affected: List[str], it: IntervalTelemetry) -> List[Msg]:
         """Operator-detail facts joined from enrichment, corroborating the verdict.
-        Clearly context, not the basis of detection."""
-        out: List[str] = []
+        Clearly context, not the basis of detection.
+
+        Returned as messages, so one pass over enrichment serves either language."""
+        out: List[Msg] = []
         rec = it.enrichment.get(entity)
         if shape == Shape.CLUSTER and rec:
             f = rec.fields
-            out.append(f"access node port utilization {f.get('port_utilization', 0):.0%}, "
-                       f"FEC errors {f.get('fec_errors', 0)} (corroborating context)")
+            out.append(Msg("corrob.access_node", {"util": f.get("port_utilization", 0),
+                                                  "fec": f.get("fec_errors", 0)}))
         elif shape == Shape.SINGLE:
             hrec = it.enrichment.get(entity)
             if hrec:
                 f = hrec.fields
-                out.append(f"home Wi-Fi SNR {f.get('wifi_snr', '?')} dB, WAN packet loss "
-                           f"{f.get('wan_packet_loss', '?')}% (corroborating context)")
+                out.append(Msg("corrob.home", {"snr": f.get("wifi_snr", "?"),
+                                               "loss": f.get("wan_packet_loss", "?")}))
         elif shape == Shape.SOURCE and rec:
             f = rec.fields
-            out.append(f"content segment failures {f.get('segment_failures', 0)}, "
-                       f"encoder dropped frames {f.get('encoder_dropped_frm', 0)} "
-                       f"(corroborating context)")
+            out.append(Msg("corrob.content", {"segments": f.get("segment_failures", 0),
+                                              "frames": f.get("encoder_dropped_frm", 0)}))
         elif shape == Shape.PATH and rec:
             f = rec.fields
-            out.append(f"core transport load {f.get('transport_load', 0):.0%}, path latency "
-                       f"{f.get('path_latency_ms', '?')} ms (corroborating context)")
+            out.append(Msg("corrob.core", {"load": f.get("transport_load", 0),
+                                           "latency": f.get("path_latency_ms", "?")}))
         # a sample affected home's freeze, to ground the symptom
         if affected:
             sample = affected[0]
             srec = it.enrichment.get(sample)
             if srec:
-                out.append(f"example home {sample} freeze {srec.fields.get('freeze_duration', 0):.1f}s "
-                           f"this interval")
+                freeze = srec.fields.get("freeze_duration", 0)
+                out.append(Msg("corrob.example_home",
+                               {"home": sample, "freeze": round(freeze, 1)}))
         return out
 
-    def _receipt(self, d: Diagnosis, corroboration: List[str]) -> ReceiptCard:
+    def _receipt(self, d: Diagnosis, corroboration: List[Msg]) -> ReceiptCard:
         e = d.evidence
-        evidence_lines = list(e.supporting) + corroboration
+        evidence_msgs = list(e.supporting_msgs) + list(corroboration)
+        evidence_lines = render_all(evidence_msgs)
         p = e.provenance
         n = len(p.entities_examined)
         sample = ", ".join(p.entities_examined[:3])
-        shown = f"; signature spans {n} homes (e.g., {sample})" if n else ""
-        provenance = (f"derived from the four-field magnitude stream over intervals "
-                      f"{p.interval_start} to {p.interval_end}; {p.note}{shown}")
+        provenance_msg = Msg("provenance.derived", {
+            "start": p.interval_start, "end": p.interval_end,
+            "note": p.note_msg or Msg("provenance.four_field_only", {}),
+            "n": n, "sample": sample})
         return ReceiptCard(claim=e.claim, evidence_lines=evidence_lines, check=e.check,
-                           provenance=provenance, confidence=d.confidence)
+                           provenance=render(provenance_msg), confidence=d.confidence,
+                           claim_msg=e.claim_msg, evidence_msgs=evidence_msgs,
+                           check_msg=e.check_msg, provenance_msg=provenance_msg)

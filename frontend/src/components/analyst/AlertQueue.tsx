@@ -10,7 +10,8 @@
 
 import type { ConsoleOut } from '../../api/types'
 import { alertStateAt, type Alert } from '../../lib/alerts'
-import { clockAt, layerLabel, pct, severityColor } from '../../lib/format'
+import { clockAt, pct, severityColor } from '../../lib/format'
+import { layerLabelOf, type T } from '../../lib/i18n'
 import { Icon, ShapeGlyph } from '../Icon'
 
 interface AlertQueueProps {
@@ -20,6 +21,8 @@ interface AlertQueueProps {
   intervalSeconds: number
   selected: string | null
   onSelect: (useCase: string) => void
+  /** Named `tr`: `t` is already the interval this rail is showing. */
+  tr: T
 }
 
 export function AlertQueue({
@@ -29,22 +32,27 @@ export function AlertQueue({
   intervalSeconds,
   selected,
   onSelect,
+  tr,
 }: AlertQueueProps) {
   const visible = alerts.filter((alert) => alertStateAt(alert, t) !== 'quiet')
   const named = visible.filter((alert) => alertStateAt(alert, t) === 'named')
   const { honest } = model
 
   return (
-    <aside className="rail col">
+    /* The rail itself does not scroll. Only the alert list does - the honest
+       instruments and the competence boundary are the demo's standing claims and have
+       to stay on screen while an operator scrolls a long incident list past them. */
+    <aside className="rail">
       <div className="rail-head">
-        <h2>Active alerts</h2>
+        <h2>{tr('alerts.active')}</h2>
         <span className={`count-pill${named.length === 0 ? ' zero' : ''}`}>
           {named.length}
         </span>
       </div>
 
-      {visible.length === 0 ? (
-        <p className="empty-q">
+      <div className="rail-scroll">
+        {visible.length === 0 ? (
+          <p className="empty-q">
           Nothing is forming yet. The engine is watching{' '}
           <span className="mono">{model.config_summary.split(',')[0]}</span> and learning
           what normal looks like.
@@ -59,17 +67,17 @@ export function AlertQueue({
 
             return (
               <button
-                key={alert.useCase}
+                key={alert.id}
                 type="button"
                 className={[
                   'qcard',
-                  selected === alert.useCase && isNamed ? 'active' : '',
+                  selected === alert.id && isNamed ? 'active' : '',
                   isNamed ? '' : 'forming',
                 ]
                   .filter(Boolean)
                   .join(' ')}
-                onClick={() => isNamed && onSelect(alert.useCase)}
-                aria-pressed={selected === alert.useCase}
+                onClick={() => isNamed && onSelect(alert.id)}
+                aria-pressed={selected === alert.id}
                 title={
                   isNamed
                     ? panel.report.headline
@@ -83,7 +91,7 @@ export function AlertQueue({
                     <ShapeGlyph shape={panel.shape} />
                   </span>
                   <span className="qtitle">
-                    {isNamed ? panel.title : 'Shape forming — not yet resolved'}
+                    {isNamed ? panel.title : tr('alerts.formingNotResolved')}
                   </span>
                 </div>
 
@@ -91,7 +99,7 @@ export function AlertQueue({
                   <span className="chip">
                     <b>{isNamed ? panel.entity : '—'}</b>
                   </span>
-                  <span className="chip layer">{layerLabel(isNamed ? panel.layer : null)}</span>
+                  <span className="chip layer">{layerLabelOf(isNamed ? panel.layer : null, tr)}</span>
                   <span className="chip">{panel.region}</span>
                   {isNamed && (
                     <span className="chip">
@@ -127,13 +135,15 @@ export function AlertQueue({
         </div>
       )}
 
-      {/* The competence boundary: the engine declining to guess. */}
+      </div>
+
+      {/* Pinned below the scroll: the engine declining to guess... */}
       {honest.abstention && (
         <div className="abstain">
-          <h3>Competence boundary</h3>
-          <p>{honest.abstention.headline}</p>
+          <h3>{tr('alerts.competenceBoundary')}</h3>
+          <p title={honest.abstention.headline}>{honest.abstention.headline}</p>
           <div className="at">
-            abstained at interval {honest.abstention.timestamp} ·{' '}
+            {tr('alerts.abstainedAt')} {honest.abstention.timestamp} ·{' '}
             {clockAt(honest.abstention.timestamp, intervalSeconds)}
           </div>
         </div>
@@ -141,14 +151,14 @@ export function AlertQueue({
 
       {/* What did not happen, which is the harder thing to show. */}
       <div className="honesty">
-        <h3>Honest instruments</h3>
+        <h3>{tr('honest.title')}</h3>
         <div className="h-sub">
-          Measured over the whole run, against ground truth the engine never sees.
+          {tr('honest.subtitle')}
         </div>
 
         <div className="hrow">
           <Icon name="shield" className="tick ok" />
-          <span className="h-lbl">Decoys that fired</span>
+          <span className="h-lbl">{tr('honest.decoysFired')}</span>
           <span className={`h-val ${honest.n_decoys_fired === 0 ? 'ok' : 'warnc'}`}>
             {honest.n_decoys_fired} / {honest.n_decoys}
           </span>
@@ -156,7 +166,7 @@ export function AlertQueue({
 
         <div className="hrow">
           <Icon name="check" className="tick ok" />
-          <span className="h-lbl">False-positive rate</span>
+          <span className="h-lbl">{tr('honest.falsePositiveRate')}</span>
           <span className={`h-val ${honest.false_positive_rate === 0 ? 'ok' : 'warnc'}`}>
             {pct(honest.false_positive_rate, 1)}
           </span>
@@ -164,7 +174,7 @@ export function AlertQueue({
 
         <div className="hrow">
           <Icon name="eye" className="tick" />
-          <span className="h-lbl">Quiet intervals watched</span>
+          <span className="h-lbl">{tr('honest.quietIntervals')}</span>
           <span className="h-val">{honest.n_non_fault_intervals}</span>
         </div>
       </div>

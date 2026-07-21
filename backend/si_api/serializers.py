@@ -14,15 +14,23 @@ visible here as a diff, not buried across the codebase.
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Mapping, Optional
 
 from si_core.console import ConsoleModel, FaultPanel, HonestPanel
-from si_core.contracts import DemoConfig, Diagnosis, Evidence, PredictedTrajectory, Provenance, Score
+from si_core.contracts import (
+    DemoConfig, Diagnosis, Evidence, Msg, PredictedTrajectory, Provenance, Score,
+)
 from si_core.diagnosis import DiagnosisReport, ReceiptCard
+from si_core.messages import CATALOGUE_EN, render, render_all
 from si_core.scoring import ScoreReport
 from si_core.topology import Node, ServiceGraph
 
 from . import schemas as s
+
+# The wording to render the domain's messages in. Every function that emits operator
+# prose takes one, defaulting to English so an un-threaded caller still produces a
+# sensible response rather than keys.
+Cat = Mapping[str, str]
 
 
 # ---------------------------------------------------------------------------
@@ -74,42 +82,81 @@ def topology_out(graph: ServiceGraph, nodes: List[Node], truncated: bool) -> s.T
 # Diagnosis, evidence, receipt
 # ---------------------------------------------------------------------------
 
-def provenance_out(p: Provenance) -> s.ProvenanceOut:
+def _say(msg: Optional[Msg], fallback: str, cat: Cat) -> str:
+    """One domain sentence in the caller's language.
+
+    Falls back to the English the domain already rendered if a message is absent, so a
+    surface not yet carrying a Msg degrades to English rather than to a blank."""
+    return render(msg, cat) if msg is not None else fallback
+
+
+def provenance_out(p: Provenance, cat: Cat = CATALOGUE_EN) -> s.ProvenanceOut:
     return s.ProvenanceOut(interval_start=p.interval_start, interval_end=p.interval_end,
-                           entities_examined=list(p.entities_examined), note=p.note)
+                           entities_examined=list(p.entities_examined),
+                           note=_say(p.note_msg, p.note, cat))
 
 
-def evidence_out(e: Evidence) -> s.EvidenceOut:
-    return s.EvidenceOut(claim=e.claim, supporting=list(e.supporting), check=e.check,
-                         provenance=provenance_out(e.provenance))
+def evidence_out(e: Evidence, cat: Cat = CATALOGUE_EN) -> s.EvidenceOut:
+    supporting = (render_all(e.supporting_msgs, cat) if e.supporting_msgs
+                  else list(e.supporting))
+    return s.EvidenceOut(claim=_say(e.claim_msg, e.claim, cat), supporting=supporting,
+                         check=_say(e.check_msg, e.check, cat),
+                         provenance=provenance_out(e.provenance, cat))
 
 
-def trajectory_out(t: PredictedTrajectory) -> s.TrajectoryOut:
-    return s.TrajectoryOut(rising=t.rising, horizon_interval=t.horizon_interval, detail=t.detail)
+def trajectory_out(t: PredictedTrajectory, cat: Cat = CATALOGUE_EN) -> s.TrajectoryOut:
+    return s.TrajectoryOut(rising=t.rising, horizon_interval=t.horizon_interval,
+                           detail=_say(t.detail_msg, t.detail, cat))
 
 
-def diagnosis_out(d: Diagnosis) -> s.DiagnosisOut:
+def diagnosis_out(d: Diagnosis, cat: Cat = CATALOGUE_EN) -> s.DiagnosisOut:
+    action = (render(Msg(f"action.{d.action_code.value}", {}), cat)
+              if d.action_code else d.recommended_action)
     return s.DiagnosisOut(
         timestamp=d.timestamp, detected=d.detected, abstained=d.abstained,
         entity_id=d.entity_id, layer=d.layer.value if d.layer else None,
         shape=d.shape.value, confidence=d.confidence,
-        recommended_action=d.recommended_action,
-        trajectory=trajectory_out(d.trajectory) if d.trajectory else None,
-        evidence=evidence_out(d.evidence) if d.evidence else None,
+        recommended_action=action,
+        action_code=d.action_code.value if d.action_code else None,
+        trajectory=trajectory_out(d.trajectory, cat) if d.trajectory else None,
+        evidence=evidence_out(d.evidence, cat) if d.evidence else None,
     )
 
 
-def receipt_out(r: ReceiptCard) -> s.ReceiptOut:
-    return s.ReceiptOut(claim=r.claim, evidence_lines=list(r.evidence_lines), check=r.check,
-                        provenance=r.provenance, confidence=r.confidence)
+def receipt_out(r: ReceiptCard, cat: Cat = CATALOGUE_EN) -> s.ReceiptOut:
+    lines = render_all(r.evidence_msgs, cat) if r.evidence_msgs else list(r.evidence_lines)
+    return s.ReceiptOut(claim=_say(r.claim_msg, r.claim, cat), evidence_lines=lines,
+                        check=_say(r.check_msg, r.check, cat),
+                        provenance=_say(r.provenance_msg, r.provenance, cat),
+                        confidence=r.confidence)
 
 
-def report_out(rep: DiagnosisReport) -> s.ReportOut:
+def _short(msg: Optional[Msg], cat: Cat) -> Optional[str]:
+    """The title form of a message: same key stem with ".short" inserted.
+
+    Deriving it from the key rather than carrying a second message means the heading and
+    the sentence beneath it are always about the same fault - they cannot be edited
+    apart. A catalogue with no short entry renders the marker, which `_short` treats as
+    absent so the caller falls back to the full sentence.
+    """
+    if msg is None:
+        return None
+    stem, _, rest = msg.key.partition(".")
+    rendered = render(Msg(f"{stem}.short.{rest}", msg.params), cat)
+    return None if rendered.startswith("[") else rendered
+
+
+def report_out(rep: DiagnosisReport, cat: Cat = CATALOGUE_EN) -> s.ReportOut:
+    full_headline = _say(rep.headline_msg, rep.headline, cat)
+    full_band = _say(rep.health_band_msg, rep.health_band, cat)
     return s.ReportOut(
-        timestamp=rep.timestamp, kind=rep.kind, headline=rep.headline,
-        health_band=rep.health_band,
-        receipt=receipt_out(rep.receipt) if rep.receipt else None,
-        diagnosis=diagnosis_out(rep.diagnosis) if rep.diagnosis else None,
+        timestamp=rep.timestamp, kind=rep.kind,
+        headline=full_headline,
+        headline_short=_short(rep.headline_msg, cat) or full_headline,
+        health_band=full_band,
+        health_band_short=_short(rep.health_band_msg, cat) or full_band,
+        receipt=receipt_out(rep.receipt, cat) if rep.receipt else None,
+        diagnosis=diagnosis_out(rep.diagnosis, cat) if rep.diagnosis else None,
     )
 
 
@@ -133,7 +180,8 @@ def score_out(score: Score, interval_seconds: int) -> s.ScoreOut:
     )
 
 
-def scorecard_out(report: ScoreReport, passed: bool) -> s.ScorecardOut:
+def scorecard_out(report: ScoreReport, passed: bool,
+                  cat: Cat = CATALOGUE_EN) -> s.ScorecardOut:
     return s.ScorecardOut(
         per_use_case=[score_out(sc, report.interval_seconds) for sc in report.per_use_case],
         false_positive_rate=report.false_positive_rate,
@@ -141,7 +189,7 @@ def scorecard_out(report: ScoreReport, passed: bool) -> s.ScorecardOut:
         n_spurious_intervals=report.n_spurious_intervals,
         n_decoys=report.n_decoys, n_decoys_fired=report.n_decoys_fired,
         interval_seconds=report.interval_seconds, notes=list(report.notes),
-        passed=passed, text=report.render(),
+        passed=passed, text=report.render(cat),
     )
 
 
@@ -149,22 +197,25 @@ def scorecard_out(report: ScoreReport, passed: bool) -> s.ScorecardOut:
 # The console
 # ---------------------------------------------------------------------------
 
-def fault_panel_out(panel: FaultPanel, interval_seconds: int) -> s.FaultPanelOut:
+def fault_panel_out(panel: FaultPanel, interval_seconds: int,
+                    cat: Cat = CATALOGUE_EN) -> s.FaultPanelOut:
     d = panel.report.diagnosis
     return s.FaultPanelOut(
-        use_case=panel.use_case.value, title=panel.title,
-        beats=[s.BeatOut(name=b.name, text=b.text) for b in panel.beats],
+        use_case=panel.use_case.value, title=_say(panel.title_msg, panel.title, cat),
+        onset_interval=panel.onset_interval,
+        beats=[s.BeatOut(name=_say(b.name_msg, b.name, cat),
+                         text=_say(b.text_msg, b.text, cat)) for b in panel.beats],
         entity=panel.entity, region=panel.region,
         layer=d.layer.value if d and d.layer else None,
         shape=panel.shape.value, affected=list(panel.affected),
-        report=report_out(panel.report),
+        report=report_out(panel.report, cat),
         score=score_out(panel.score, interval_seconds),
     )
 
 
-def honest_panel_out(honest: HonestPanel) -> s.HonestPanelOut:
+def honest_panel_out(honest: HonestPanel, cat: Cat = CATALOGUE_EN) -> s.HonestPanelOut:
     return s.HonestPanelOut(
-        abstention=report_out(honest.abstention) if honest.abstention else None,
+        abstention=report_out(honest.abstention, cat) if honest.abstention else None,
         n_decoys=honest.n_decoys, n_decoys_fired=honest.n_decoys_fired,
         false_positive_rate=honest.false_positive_rate,
         n_non_fault_intervals=honest.n_non_fault_intervals,
@@ -172,13 +223,15 @@ def honest_panel_out(honest: HonestPanel) -> s.HonestPanelOut:
     )
 
 
-def console_out(model: ConsoleModel, passed: bool) -> s.ConsoleOut:
+def console_out(model: ConsoleModel, passed: bool, cat: Cat = CATALOGUE_EN) -> s.ConsoleOut:
     interval_seconds = model.score_report.interval_seconds
     return s.ConsoleOut(
-        title=model.title, subtitle=model.subtitle, config_summary=model.config_summary,
-        fault_panels=[fault_panel_out(p, interval_seconds) for p in model.fault_panels],
-        honest=honest_panel_out(model.honest),
-        scorecard=scorecard_out(model.score_report, passed),
+        title=model.title,
+        subtitle=_say(model.subtitle_msg, model.subtitle, cat),
+        config_summary=_say(model.config_summary_msg, model.config_summary, cat),
+        fault_panels=[fault_panel_out(p, interval_seconds, cat) for p in model.fault_panels],
+        honest=honest_panel_out(model.honest, cat),
+        scorecard=scorecard_out(model.score_report, passed, cat),
     )
 
 
@@ -186,13 +239,30 @@ def console_out(model: ConsoleModel, passed: bool) -> s.ConsoleOut:
 # Stream frames
 # ---------------------------------------------------------------------------
 
+def cached_frame_out(frame, total_intervals: int, cat: Cat = CATALOGUE_EN) -> s.StreamFrameOut:
+    """A replayed interval that was already computed, on the wire.
+
+    Takes the aggregates rather than the raw magnitudes, because a cached frame keeps
+    only the two numbers the client is sent - see CachedFrame. The diagnoses are still
+    domain objects, so the language is chosen here and not when the frame was cached.
+    """
+    return s.StreamFrameOut(
+        timestamp=frame.timestamp, total_intervals=total_intervals,
+        n_core_records=frame.n_core_records,
+        mean_magnitude=frame.mean_magnitude, max_magnitude=frame.max_magnitude,
+        diagnoses=[diagnosis_out(d, cat) for d in frame.diagnoses],
+        fault_onsets=list(frame.fault_onsets),
+    )
+
+
 def frame_out(timestamp: int, total_intervals: int, magnitudes: List[float],
-              diagnoses: List[Diagnosis], fault_onsets: List[str]) -> s.StreamFrameOut:
+              diagnoses: List[Diagnosis], fault_onsets: List[str],
+              cat: Cat = CATALOGUE_EN) -> s.StreamFrameOut:
     n = len(magnitudes)
     return s.StreamFrameOut(
         timestamp=timestamp, total_intervals=total_intervals, n_core_records=n,
         mean_magnitude=(sum(magnitudes) / n) if n else 0.0,
         max_magnitude=max(magnitudes) if magnitudes else 0.0,
-        diagnoses=[diagnosis_out(d) for d in diagnoses],
+        diagnoses=[diagnosis_out(d, cat) for d in diagnoses],
         fault_onsets=fault_onsets,
     )

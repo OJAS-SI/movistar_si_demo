@@ -14,7 +14,7 @@
 
 import type { ConsoleOut, FaultPanelOut, Layer, Shape, StreamFrameOut, UseCase } from '../api/types'
 import type { Onset } from '../hooks/useReplay'
-import { severityOf, faultUseCase, type Severity } from './format'
+import { severityOf, type Severity } from './format'
 
 /**
  * A fault as the live stream reveals it, before the full run has finished computing.
@@ -69,6 +69,16 @@ export function liveFaults(frames: StreamFrameOut[]): LiveFault[] {
 export type AlertState = 'quiet' | 'forming' | 'named'
 
 export interface Alert {
+  /**
+   * Identity of this alert, and the ONLY thing that may be used to select, key or
+   * compare one.
+   *
+   * It used to be `useCase`, which is not unique: a full run has 24 fault panels across
+   * just 5 use cases - 13 of them uc1. That made every uc1 card share a React key and a
+   * selection value, so clicking one selected the first uc1 panel, highlighted all 13,
+   * and left some cards apparently dead. The entity a verdict names is unique per run.
+   */
+  id: string
   useCase: UseCase
   panel: FaultPanelOut
   severity: Severity
@@ -80,23 +90,18 @@ export interface Alert {
   nAffected: number
 }
 
-export function buildAlerts(model: ConsoleOut, onsets: Onset[]): Alert[] {
-  const onsetByUseCase = new Map<UseCase, number>()
-  for (const onset of onsets) {
-    const useCase = faultUseCase(onset.faultId)
-    // The first onset wins: a use case is injected once, and if that ever changed we
-    // would want the beginning of the story, not the latest event in it.
-    if (useCase && useCase !== 'decoy' && !onsetByUseCase.has(useCase)) {
-      onsetByUseCase.set(useCase, onset.interval)
-    }
-  }
-
-  return model.fault_panels.map((panel) => ({
+export function buildAlerts(model: ConsoleOut, _onsets: Onset[]): Alert[] {
+  // The onset comes from the panel, not from the stream's fault ids. Those ids carry no
+  // entity, so the only way to join them here was by use case - which put the first uc1
+  // fault's onset on all thirteen of them, and made twelve alerts claim to start hours
+  // before they did.
+  return model.fault_panels.map((panel, index) => ({
+    id: `${index}:${panel.entity}`,
     useCase: panel.use_case,
     panel,
     severity: severityOf(panel.report.health_band),
     namedAt: panel.report.diagnosis?.timestamp ?? panel.report.timestamp,
-    onsetAt: onsetByUseCase.get(panel.use_case) ?? null,
+    onsetAt: panel.onset_interval,
     nAffected: panel.affected.length,
   }))
 }

@@ -22,6 +22,9 @@ class Settings:
     cors_origins: Tuple[str, ...] = DEFAULT_CORS_ORIGINS
     frontend_dist: Path = REPO_ROOT / "frontend" / "dist"
     max_runs: int = 16
+    # Compute tiny and full at startup so the scale toggle is instant. Off is useful for
+    # tests and for anyone iterating on si_core who does not want to pay 84s per reload.
+    prewarm: bool = True
 
     @property
     def serve_frontend(self) -> bool:
@@ -37,4 +40,5 @@ def get_settings() -> Settings:
         cors_origins=tuple(o.strip() for o in origins.split(",") if o.strip())
         if origins else DEFAULT_CORS_ORIGINS,
         max_runs=int(os.environ.get("SI_MAX_RUNS", "16")),
+        prewarm=os.environ.get("SI_PREWARM", "1") not in ("0", "false", "False"),
     )

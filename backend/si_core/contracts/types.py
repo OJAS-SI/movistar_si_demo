@@ -25,6 +25,36 @@ from typing import Any, Dict, Optional, Tuple
 
 
 # =====================================================================
+# MESSAGES - what the domain says, before anyone chooses a language
+# =====================================================================
+
+@dataclass(frozen=True, slots=True)
+class Msg:
+    """One thing the domain has to say, as a key and its facts - never as a sentence.
+
+    The demo is bilingual, and the operator-facing prose is assembled from live values
+    (entity ids, counts, regions, minutes). Translating finished sentences is hopeless,
+    so the domain stops producing them: it produces a key naming what it wants to say
+    and the values to say it with. A catalogue turns that into English or Spanish.
+
+    This keeps the layering the rest of the codebase already states. si_core decides
+    WHAT is true; a catalogue decides HOW it reads; si_api decides WHICH language the
+    caller asked for. The domain never imports a language.
+
+    `params` holds only primitives, so a Msg stays as serialisable as the records
+    around it, and a catalogue can format it without reaching back into the domain.
+    """
+    key: str
+    params: Dict[str, Any] = field(default_factory=dict)
+
+    def with_params(self, **extra: Any) -> "Msg":
+        """A copy carrying additional facts, for the rare caller that learns one late."""
+        merged = dict(self.params)
+        merged.update(extra)
+        return Msg(key=self.key, params=merged)
+
+
+# =====================================================================
 # ENUMERATIONS - the closed vocabularies of the domain
 # =====================================================================
 
@@ -58,6 +88,31 @@ class Shape(str, Enum):
     PATH = "path"               # affected nodes strung along a path -> core
     SOURCE = "source"           # one source impairing many unrelated nodes -> content
     NONE = "none"               # no fault shape present (healthy / decoy)
+
+
+class ActionCode(str, Enum):
+    """What the engine recommends, as a code rather than a sentence.
+
+    This exists because the recommendation has two audiences that must not share a
+    representation. The operator reads a sentence, and that sentence has to be
+    translatable. The scoring harness reads a decision, and it must keep meaning the
+    same thing in every language: scoring once asked whether the string contained the
+    word "box" to prove an access fault was never answered with a set-top-box swap,
+    which would have silently passed the moment the demo spoke Spanish. The code is
+    what scoring reads; the sentence is what the catalogues render.
+    """
+    INSPECT_ACCESS_NODE = "inspect_access_node"
+    CONTACT_CUSTOMER_GATEWAY = "contact_customer_gateway"
+    INVESTIGATE_CORE_ROUTE = "investigate_core_route"
+    INVESTIGATE_CONTENT_SOURCE = "investigate_content_source"
+    WATCH_AND_CONFIRM = "watch_and_confirm"
+    ESCALATE_TO_HUMAN = "escalate_to_human"
+    SWAP_SET_TOP_BOX = "swap_set_top_box"
+
+    @property
+    def is_box_swap(self) -> bool:
+        """The futile action the demo exists to avoid. Scoring asks this, not the text."""
+        return self is ActionCode.SWAP_SET_TOP_BOX
 
 
 class UseCase(str, Enum):
@@ -187,17 +242,27 @@ class Provenance:
     interval_end: int
     entities_examined: Tuple[str, ...]
     note: str = ""
+    note_msg: Optional[Msg] = None
 
 
 @dataclass(frozen=True, slots=True)
 class Evidence:
     """The certified-decision receipt material: a claim, the supporting evidence,
     an independent check that re-derives it, and the provenance. This is how every
-    diagnosis is made explainable rather than a bare score."""
+    diagnosis is made explainable rather than a bare score.
+
+    Each leg exists twice: as the English the demo has always emitted, and as a Msg
+    carrying the same fact without a language. The strings keep the text console and
+    the HTML export working unchanged; the messages are what a catalogue renders when
+    the operator asked for Spanish. They are written together and must not drift.
+    """
     claim: str
     supporting: Tuple[str, ...]
     check: str
     provenance: Provenance
+    claim_msg: Optional[Msg] = None
+    supporting_msgs: Tuple[Msg, ...] = ()
+    check_msg: Optional[Msg] = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,6 +273,7 @@ class PredictedTrajectory:
     rising: bool
     horizon_interval: Optional[int]
     detail: str = ""
+    detail_msg: Optional[Msg] = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -230,6 +296,9 @@ class Diagnosis:
     trajectory: Optional[PredictedTrajectory]
     evidence: Optional[Evidence]
     recommended_action: Optional[str] = None
+    # What the recommendation IS, as opposed to how it reads. Scoring must consult this
+    # and never the sentence, or a translated demo would score its own wording.
+    action_code: Optional[ActionCode] = None
 
     def __post_init__(self) -> None:
         if not (0.0 <= float(self.confidence) <= 1.0):
@@ -288,3 +357,4 @@ class Score:
     false_positive_rate: Optional[float]
     action_correctness: Optional[float]
     note: str = ""
+    note_msg: Optional[Msg] = None

@@ -14,7 +14,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Query, status
 from fastapi.responses import HTMLResponse
 
-from ..dependencies import StoreDep
+from ..dependencies import CatalogueDep, StoreDep
 from ..serializers import config_out, console_out, diagnosis_out, scorecard_out, topology_out
 from ..services.run_store import Run
 from ..schemas import (
@@ -29,7 +29,7 @@ def _run_out(run: Run) -> RunOut:
         run_id=run.run_id, scale=run.scale, seed=run.seed, status=run.status,
         created_at=run.created_at, config=config_out(run.config),
         runtime_seconds=run.runtime_seconds, passed=run.passed,
-        summary=run.summary, error=run.error,
+        summary=run.summary, error=run.error, warm=run.warm,
     )
 
 
@@ -84,22 +84,22 @@ def get_run(run_id: str, store: StoreDep) -> RunOut:
 
 @router.get("/{run_id}/console", response_model=ConsoleOut,
             summary="The operator console: the four-beat narrative, the honest instruments, the scorecard")
-def get_console(run_id: str, store: StoreDep) -> ConsoleOut:
+def get_console(run_id: str, store: StoreDep, cat: CatalogueDep) -> ConsoleOut:
     """The whole story of the run in one payload. This is what the React console renders."""
     run = store.get_complete(run_id)
-    return console_out(run.result.console_model, run.result.passed())
+    return console_out(run.result.console_model, run.result.passed(), cat)
 
 
 @router.get("/{run_id}/scorecard", response_model=ScorecardOut,
             summary="Measured scores against ground truth")
-def get_scorecard(run_id: str, store: StoreDep) -> ScorecardOut:
+def get_scorecard(run_id: str, store: StoreDep, cat: CatalogueDep) -> ScorecardOut:
     run = store.get_complete(run_id)
-    return scorecard_out(run.result.score_report, run.result.passed())
+    return scorecard_out(run.result.score_report, run.result.passed(), cat)
 
 
 @router.get("/{run_id}/diagnoses", response_model=List[DiagnosisOut],
             summary="The verdicts the run settled on")
-def get_diagnoses(run_id: str, store: StoreDep) -> List[DiagnosisOut]:
+def get_diagnoses(run_id: str, store: StoreDep, cat: CatalogueDep) -> List[DiagnosisOut]:
     """One diagnosis per use case (the element the engine settled on, taken while the
     fault was still forming), plus the abstention if the engine declined anywhere.
 
@@ -107,11 +107,11 @@ def get_diagnoses(run_id: str, store: StoreDep) -> List[DiagnosisOut]:
     """
     run = store.get_complete(run_id)
     model = run.result.console_model
-    out = [diagnosis_out(p.report.diagnosis) for p in model.fault_panels
+    out = [diagnosis_out(p.report.diagnosis, cat) for p in model.fault_panels
            if p.report.diagnosis is not None]
     abstention = model.honest.abstention
     if abstention is not None and abstention.diagnosis is not None:
-        out.append(diagnosis_out(abstention.diagnosis))
+        out.append(diagnosis_out(abstention.diagnosis, cat))
     return out
 
 

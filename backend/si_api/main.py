@@ -16,6 +16,7 @@ Run it:
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -44,8 +45,20 @@ Start with `POST /api/runs`, then read `GET /api/runs/{run_id}/console`.
 async def lifespan(app: FastAPI):
     settings: Settings = get_settings()
     app.state.settings = settings
-    app.state.run_store = RunStore(max_runs=settings.max_runs)
+    store = RunStore(max_runs=settings.max_runs)
+    app.state.run_store = store
+
+    # Compute the demo's runs before anyone asks for one. The full network takes ~84s;
+    # paid here it is invisible, paid when the presenter reaches for the scale toggle it
+    # is the demo stalling. This is a task, not an await: the server must start serving
+    # immediately, and a client that asks for a scale mid-prewarm simply joins the run
+    # already in flight rather than starting a second one.
+    warmer = asyncio.create_task(store.prewarm()) if settings.prewarm else None
+
     yield
+
+    if warmer is not None:
+        warmer.cancel()
     app.state.run_store = None
 
 

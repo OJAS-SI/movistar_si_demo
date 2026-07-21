@@ -12,9 +12,10 @@
  */
 
 import { useState } from 'react'
+import { layerLabelOf, type T } from '../../lib/i18n'
 import type { RunOut } from '../../api/types'
 import { alertStateAt, type Alert } from '../../lib/alerts'
-import { C, clockAt, layerLabel, pct } from '../../lib/format'
+import { C, clockAt, pct } from '../../lib/format'
 import { MAP_VIEWBOX, placeOf, PORTUGAL_PATH, SPAIN_PATH } from '../../lib/geo'
 import { Icon } from '../Icon'
 
@@ -25,11 +26,12 @@ interface MapTabProps {
   t: number
   intervalSeconds: number
   onOpenAlert: (useCase: string) => void
+  tr: T
 }
 
 type RegionStatus = 'named' | 'forming' | 'clear'
 
-export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert }: MapTabProps) {
+export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert, tr }: MapTabProps) {
   const regions = run?.config.regions ?? []
   const [selected, setSelected] = useState<string | null>(null)
 
@@ -154,17 +156,17 @@ export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert }: MapTabP
             <span className="lg-dot" style={{ background: C.red }} /> element named by the engine
           </div>
           <div className="row">
-            <span className="lg-dot" style={{ background: C.amber }} /> shape forming, not yet named
+            <span className="lg-dot" style={{ background: C.amber }} /> {tr('map.legend.forming')}
           </div>
           <div className="row">
-            <span className="lg-dot" style={{ background: C.green }} /> at baseline
+            <span className="lg-dot" style={{ background: C.green }} /> {tr('map.legend.baseline')}
           </div>
         </div>
       </div>
 
       <aside className="mside">
         <div className="mhead">
-          <h3>Regions in this run</h3>
+          <h3>{tr('map.regions')}</h3>
           <span className="mono" style={{ color: 'var(--faint)', fontSize: 11 }}>
             {regions.length}
           </span>
@@ -207,7 +209,7 @@ export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert }: MapTabP
 
             <div className="dstat">
               <div className="c">
-                <div className="k">Verdicts here</div>
+                <div className="k">{tr('map.verdictsHere')}</div>
                 <div className="v">
                   {alertsIn(selectedRegion.name).filter(
                     (alert) => alertStateAt(alert, t) === 'named',
@@ -215,7 +217,7 @@ export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert }: MapTabP
                 </div>
               </div>
               <div className="c">
-                <div className="k">Network weight</div>
+                <div className="k">{tr('map.networkWeight')}</div>
                 <div className="v">{selectedRegion.weight.toFixed(1)}</div>
               </div>
             </div>
@@ -247,13 +249,13 @@ export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert }: MapTabP
             {alertsIn(selectedRegion.name)
               .filter((alert) => alertStateAt(alert, t) === 'named')
               .map((alert) => (
-                <div key={alert.useCase} className="mini-alert">
+                <div key={alert.id} className="mini-alert">
                   <span
                     className="md"
                     style={{ background: alert.severity === 'crit' ? C.red : C.amber }}
                   />
                   <div style={{ minWidth: 0 }}>
-                    <div className="mt">{layerLabel(alert.panel.layer)}</div>
+                    <div className="mt">{layerLabelOf(alert.panel.layer, tr)}</div>
                     <div className="me">
                       {alert.panel.entity} · {pct(alert.panel.report.diagnosis?.confidence ?? 0)}
                     </div>
@@ -261,7 +263,7 @@ export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert }: MapTabP
                   <button
                     type="button"
                     className="open"
-                    onClick={() => onOpenAlert(alert.useCase)}
+                    onClick={() => onOpenAlert(alert.id)}
                   >
                     Open
                   </button>
@@ -271,7 +273,7 @@ export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert }: MapTabP
             {alertsIn(selectedRegion.name).length === 0 && (
               <p className="sub" style={{ color: 'var(--faint)', fontSize: 11.5 }}>
                 <Icon name="check" className="tick ok" style={{ width: 13, height: 13 }} /> Nothing
-                was ever named here. This region stayed at baseline for the whole run.
+                {tr('map.noVerdict')}
               </p>
             )}
           </div>

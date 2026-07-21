@@ -150,7 +150,11 @@ export interface ReportOut {
   timestamp: number
   kind: ReportKind
   headline: string
+  /** Title form: the element and what is wrong, without the paragraph. */
+  headline_short: string
   health_band: string
+  /** Badge form of the band: "Critical", "Degraded", "Watch". */
+  health_band_short: string
   receipt: ReceiptOut | null
   diagnosis: DiagnosisOut | null
 }
@@ -200,6 +204,8 @@ export interface BeatOut {
 export interface FaultPanelOut {
   use_case: UseCase
   title: string
+  /** Ground-truth onset for THIS fault, or null. Never join onsets by use case. */
+  onset_interval: number | null
   beats: BeatOut[]
   entity: string
   region: string

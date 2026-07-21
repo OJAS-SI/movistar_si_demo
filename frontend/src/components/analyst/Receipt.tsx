@@ -14,15 +14,16 @@
 import { useState } from 'react'
 import type { FaultPanelOut } from '../../api/types'
 import { pct } from '../../lib/format'
+import type { T } from '../../lib/i18n'
 import { Icon, type IconName } from '../Icon'
 
 /** The follow-on actions an operator would take once the engine has named an element. */
-function actionsFor(panel: FaultPanelOut): { icon: IconName; title: string; sub: string }[] {
+function actionsFor(panel: FaultPanelOut, tr: T): { icon: IconName; title: string; sub: string }[] {
   const recommended = panel.report.diagnosis?.recommended_action
 
   const primary = {
     icon: (panel.layer === 'home' ? 'phone' : 'wrench') as IconName,
-    title: recommended ? sentenceCase(recommended) : 'Act on the named element',
+    title: recommended ? sentenceCase(recommended) : tr('action.actOnElement'),
     sub: `${panel.entity} · ${panel.region}`,
   }
 
@@ -30,20 +31,20 @@ function actionsFor(panel: FaultPanelOut): { icon: IconName; title: string; sub:
     primary,
     {
       icon: 'ticket',
-      title: 'Open a field ticket',
-      sub: 'Pre-filled with the element, its layer, and the receipt',
+      title: tr('action.openTicket'),
+      sub: tr('action.openTicket.sub'),
     },
     {
       icon: 'bell',
-      title: 'Pre-warn Customer Care',
-      sub: `Suppress the inbound wave from ${panel.affected.length} home${
-        panel.affected.length === 1 ? '' : 's'
+      title: tr('action.preWarn'),
+      sub: `${tr('action.preWarn.sub')} ${panel.affected.length} ${
+        panel.affected.length === 1 ? tr('alerts.home') : tr('alerts.homes')
       }`,
     },
     {
       icon: 'share',
-      title: 'Share the receipt with the NOC',
-      sub: 'Route the structural evidence to the transport desk',
+      title: tr('action.shareNoc'),
+      sub: tr('action.shareNoc.sub'),
     },
   ]
 }
@@ -52,11 +53,11 @@ function sentenceCase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-export function Receipt({ panel }: { panel: FaultPanelOut }) {
+export function Receipt({ panel, tr }: { panel: FaultPanelOut; tr: T }) {
   const [acted, setActed] = useState<string | null>(null)
   const receipt = panel.report.receipt
   const evidence = panel.report.diagnosis?.evidence
-  const actions = actionsFor(panel)
+  const actions = actionsFor(panel, tr)
 
   return (
     <div className="right">
@@ -66,7 +67,7 @@ export function Receipt({ panel }: { panel: FaultPanelOut }) {
             <span className="ico">
               <Icon name="receipt" />
             </span>
-            Certified-decision receipt
+            {tr('receipt.title')}
           </div>
           <p className="sub">
             Why the engine believes this, what would have proved it wrong, and where every
@@ -77,11 +78,11 @@ export function Receipt({ panel }: { panel: FaultPanelOut }) {
             <>
               <div className="receipt">
                 <div className="rr">
-                  <div className="rk">Claim</div>
+                  <div className="rk">{tr('receipt.claim')}</div>
                   <div className="rv">{receipt.claim}</div>
                 </div>
                 <div className="rr">
-                  <div className="rk">Evidence</div>
+                  <div className="rk">{tr('receipt.evidence')}</div>
                   <div className="rv">
                     {receipt.evidence_lines.length === 1 ? (
                       receipt.evidence_lines[0]
@@ -95,11 +96,11 @@ export function Receipt({ panel }: { panel: FaultPanelOut }) {
                   </div>
                 </div>
                 <div className="rr">
-                  <div className="rk">Check</div>
+                  <div className="rk">{tr('receipt.check')}</div>
                   <div className="rv">{receipt.check}</div>
                 </div>
                 <div className="rr">
-                  <div className="rk">Provenance</div>
+                  <div className="rk">{tr('receipt.provenance')}</div>
                   <div className="rv mono" style={{ fontSize: '10.5px' }}>
                     {receipt.provenance}
                   </div>
@@ -107,7 +108,7 @@ export function Receipt({ panel }: { panel: FaultPanelOut }) {
               </div>
 
               <div className="conf-bar">
-                <span style={{ color: 'var(--faint)', fontSize: '10.5px' }}>CONFIDENCE</span>
+                <span style={{ color: 'var(--faint)', fontSize: '10.5px' }}>{tr('receipt.confidence').toUpperCase()}</span>
                 <span className="track">
                   <i style={{ width: `${Math.round(receipt.confidence * 100)}%` }} />
                 </span>
@@ -115,7 +116,7 @@ export function Receipt({ panel }: { panel: FaultPanelOut }) {
               </div>
             </>
           ) : (
-            <p className="sub">This verdict carried no receipt.</p>
+            <p className="sub">{tr('receipt.none')}</p>
           )}
         </section>
 
@@ -155,7 +156,7 @@ export function Receipt({ panel }: { panel: FaultPanelOut }) {
           <span className="ico">
             <Icon name="wrench" />
           </span>
-          Recommended action
+          {tr('action.title')}
         </div>
 
         {actions.map((action, index) => (
@@ -179,7 +180,7 @@ export function Receipt({ panel }: { panel: FaultPanelOut }) {
         <p className="sub" style={{ margin: '4px 0 0' }}>
           {acted
             ? `“${acted}” — nothing was dispatched: this is a synthetic demo, on a synthetic network.`
-            : 'These are the actions the verdict licenses. Nothing here dispatches to a real network.'}
+            : tr('action.footer')}
         </p>
       </div>
     </div>

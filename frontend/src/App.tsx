@@ -19,10 +19,35 @@ import { Icon } from './components/Icon'
 import { useDemoRun } from './hooks/useDemoRun'
 import { useReplay } from './hooks/useReplay'
 import { buildAlerts, liveFaults, mostRecentlyNamed } from './lib/alerts'
+import { initialLang, rememberLang, translator, type Lang, type T } from './lib/i18n'
+import { setApiLang } from './api/client'
 import type { ScaleName } from './api/types'
 
 export default function App() {
-  const { phase, run, console: model, computing, error, restart, scale } = useDemoRun('tiny')
+  // The language is set on the API client before the first request goes out, so the very
+  // first console arrives already in the right language rather than flashing English.
+  const [lang, setLang] = useState<Lang>(() => {
+    const initial = initialLang()
+    setApiLang(initial)
+    return initial
+  })
+  const t = useMemo(() => translator(lang), [lang])
+
+  const { phase, run, console: model, computing, error, restart, scale, refetchConsole } =
+    useDemoRun('tiny')
+
+  // Changing language re-reads the console for the SAME run; it never re-runs the engine.
+  // The verdicts, numbers and ids are identical either way - only the prose is re-rendered.
+  const onLang = (next: Lang) => {
+    setLang(next)
+    setApiLang(next)
+    rememberLang(next)
+    void refetchConsole()
+  }
+
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
 
   const replay = useReplay(
     phase === 'ready' && run ? run.run_id : null,
@@ -50,7 +75,7 @@ export default function App() {
   const following = useMemo(() => mostRecentlyNamed(alerts, replay.t), [alerts, replay.t])
 
   const selected = useMemo(() => {
-    const pin = alerts.find((alert) => alert.useCase === pinned)
+    const pin = alerts.find((alert) => alert.id === pinned)
     // A pinned alert the timeline has scrubbed back past is not a verdict yet, so fall
     // back to following rather than showing a call that has not happened.
     if (pin && replay.t >= pin.namedAt) return pin
@@ -97,11 +122,14 @@ export default function App() {
         tab={tab}
         onTab={setTab}
         onScale={onScale}
+        lang={lang}
+        onLang={onLang}
+        t={t}
       />
 
       <div id="content">
-        {phase === 'starting' && <Starting scale={scale} />}
-        {phase === 'failed' && <Failed error={error} onRetry={() => restart(scale)} />}
+        {phase === 'starting' && <Starting scale={scale} tr={t} />}
+        {phase === 'failed' && <Failed error={error} onRetry={() => restart(scale)} tr={t} />}
 
         {phase === 'ready' && !model && (
           <LiveDeck
@@ -111,6 +139,7 @@ export default function App() {
             totalIntervals={replay.totalIntervals || (run?.config.run_intervals ?? 1)}
             intervalSeconds={intervalSeconds}
             progress={replay.progress}
+            tr={t}
           />
         )}
 
@@ -118,6 +147,7 @@ export default function App() {
           <>
             {tab === 'analyst' && (
               <AnalystTab
+                tr={t}
                 model={model}
                 alerts={alerts}
                 selected={selected}
@@ -127,7 +157,7 @@ export default function App() {
                 intervalSeconds={intervalSeconds}
               />
             )}
-            {tab === 'mgmt' && <ManagementTab model={model} run={run} alerts={alerts} />}
+            {tab === 'mgmt' && <ManagementTab model={model} run={run} alerts={alerts} tr={t} />}
             {tab === 'map' && (
               <MapTab
                 run={run}
@@ -135,6 +165,7 @@ export default function App() {
                 t={replay.t}
                 intervalSeconds={intervalSeconds}
                 onOpenAlert={openAlert}
+                tr={t}
               />
             )}
           </>
@@ -156,40 +187,37 @@ export default function App() {
         onTogglePlay={replay.togglePlay}
         onCycleSpeed={replay.cycleSpeed}
         onReset={replay.reset}
+        tr={t}
       />
     </div>
   )
 }
 
-function Starting({ scale }: { scale: ScaleName }) {
+function Starting({ scale, tr }: { scale: ScaleName; tr: T }) {
   return (
     <div className="splash">
       <div className="inner">
         <div className="spin" />
-        <h2>Running the {scale === 'tiny' ? 'tiny' : 'full six-region'} network</h2>
-        <p>
-          Building the service graph, injecting the faults and the decoys, and letting the
-          engine watch the four-field stream. The run is deterministic from its seed, so it
-          produces exactly the same story every time.
-        </p>
+        <h2>{tr(scale === 'tiny' ? 'state.startingTiny' : 'state.startingFull')}</h2>
+        <p>{tr('state.startingBody')}</p>
       </div>
     </div>
   )
 }
 
-function Failed({ error, onRetry }: { error: string | null; onRetry: () => void }) {
+function Failed({ error, onRetry, tr }: { error: string | null; onRetry: () => void; tr: T }) {
   return (
     <div className="splash bad">
       <div className="inner">
         <Icon name="alert" style={{ width: 34, height: 34, color: 'var(--red)' }} />
-        <h2>The run did not start</h2>
-        <p>{error ?? 'Something went wrong.'}</p>
+        <h2>{tr('state.failed')}</h2>
+        <p>{error ?? tr('state.failed.generic')}</p>
         <p style={{ marginTop: 10, color: 'var(--faint)' }}>
-          The console needs the API. Start it with{' '}
+          {tr('state.failed.needsApi')}{' '}
           <span className="mono">uvicorn si_api.main:app --reload --app-dir backend</span>
         </p>
         <button type="button" className="retry" onClick={onRetry}>
-          Try again
+          {tr('state.retry')}
         </button>
       </div>
     </div>

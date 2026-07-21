@@ -23,6 +23,8 @@ export interface DemoRun {
   /** Start a fresh run at this scale, replacing the current one. */
   restart: (scale: ScaleName) => void
   scale: ScaleName
+  /** Re-read the current run's console, e.g. after the language changed. */
+  refetchConsole: () => Promise<void>
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -124,5 +126,22 @@ export function useDemoRun(initialScale: ScaleName = 'tiny'): DemoRun {
     setAttempt((n) => n + 1)
   }, [])
 
-  return { phase, run, console: consoleModel, computing, error, restart, scale }
+  /**
+   * Re-read the console for the run already on screen.
+   *
+   * Switching language must not re-run the engine. The run is deterministic and already
+   * computed; only the wording of its sentences comes from the server, so this refetches
+   * the same run_id and swaps the payload. Numbers, ids and verdicts are unchanged by
+   * construction - which is the point, and is what makes flipping language mid-demo safe.
+   */
+  const refetchConsole = useCallback(async () => {
+    if (!run || run.status !== 'complete') return
+    try {
+      setConsoleModel(await api.getConsole(run.run_id))
+    } catch {
+      /* keep the console we have; the language simply stays as it was */
+    }
+  }, [run])
+
+  return { phase, run, console: consoleModel, computing, error, restart, scale, refetchConsole }
 }

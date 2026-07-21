@@ -9,9 +9,10 @@
  * live picture, and it is never blank for more than the first interval.
  */
 
+import { layerLabelOf, type T } from '../lib/i18n'
 import type { StreamFrameOut } from '../api/types'
 import type { LiveFault } from '../lib/alerts'
-import { clockAt, layerLabel, LAYER_COLOR, num, pct } from '../lib/format'
+import { clockAt, LAYER_COLOR, num, pct } from '../lib/format'
 import { Icon, ShapeGlyph } from './Icon'
 
 interface LiveDeckProps {
@@ -21,6 +22,7 @@ interface LiveDeckProps {
   totalIntervals: number
   intervalSeconds: number
   progress: number
+  tr: T
 }
 
 export function LiveDeck({
@@ -30,6 +32,7 @@ export function LiveDeck({
   totalIntervals,
   intervalSeconds,
   progress,
+  tr,
 }: LiveDeckProps) {
   const pctDone = Math.round(progress * 100)
 
@@ -38,7 +41,7 @@ export function LiveDeck({
       <div className="alert-head">
         <span className="pulse" />
         <div>
-          <h2>Watching the network live — faults appear the moment the engine names them</h2>
+          <h2>{tr('live.watching')}</h2>
           <div className="headmeta" style={{ marginLeft: 0 }}>
             <span className="hm">
               <b className="mono">{live.length}</b> named so far
@@ -92,7 +95,7 @@ export function LiveDeck({
                   <span className="qtitle mono">{fault.entity}</span>
                 </div>
                 <div className="qmeta">
-                  <span className="chip layer">{layerLabel(fault.layer)}</span>
+                  <span className="chip layer">{layerLabelOf(fault.layer, tr)}</span>
                   <span className="chip">
                     named <b className="mono">{clockAt(fault.firstSeen, intervalSeconds)}</b>
                   </span>

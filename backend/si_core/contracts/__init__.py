@@ -20,6 +20,10 @@ Public surface (import these; do not reach into submodules):
 
     Enumerations:
         Layer, EntityType, Shape, UseCase, RampProfile, SHAPE_TO_LAYER
+        ActionCode
+
+    Language-free messages (the domain says what is true; a catalogue picks the words):
+        Msg
 
     Configuration and determinism:
         DemoConfig, RegionConfig, TopologyConfig
@@ -39,6 +43,7 @@ from .types import (
     Diagnosis, Evidence, Provenance, PredictedTrajectory,
     GroundTruthLabel, Score,
     Layer, EntityType, Shape, UseCase, RampProfile, SHAPE_TO_LAYER,
+    Msg, ActionCode,
 )
 from .config import (
     DemoConfig, RegionConfig, TopologyConfig,
@@ -56,6 +61,7 @@ __all__ = [
     "Diagnosis", "Evidence", "Provenance", "PredictedTrajectory",
     "GroundTruthLabel", "Score",
     "Layer", "EntityType", "Shape", "UseCase", "RampProfile", "SHAPE_TO_LAYER",
+    "Msg", "ActionCode",
     "DemoConfig", "RegionConfig", "TopologyConfig",
     "default_config", "tiny_config", "CANONICAL_REGIONS",
     "SeededRandom",

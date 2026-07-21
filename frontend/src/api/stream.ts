@@ -9,6 +9,7 @@
  * are already in hand.
  */
 
+import { apiLang } from './client'
 import type { StreamFrameOut, StreamMessage } from './types'
 
 export interface StreamHandlers {
@@ -20,7 +21,9 @@ export interface StreamHandlers {
 /** The socket URL, on whatever host is serving the page. */
 function streamUrl(runId: string, intervalMs: number): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//${window.location.host}/api/runs/${runId}/stream?interval_ms=${intervalMs}`
+  // The stream carries diagnoses, whose recommended actions are prose, so the socket
+  // needs the language too - not just the REST reads.
+  return `${protocol}//${window.location.host}/api/runs/${runId}/stream?interval_ms=${intervalMs}&lang=${apiLang()}`
 }
 
 /**

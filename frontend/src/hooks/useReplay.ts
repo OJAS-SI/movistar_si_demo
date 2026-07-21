@@ -23,6 +23,26 @@ import { isDecoy } from '../lib/format'
 /** How long one interval lasts on screen at 1x. The demo is watched, not lived. */
 const BASE_FRAME_MS = 220
 
+/**
+ * How long a whole run should take to play at 1x.
+ *
+ * Pacing by a fixed per-frame delay meant the full network ran for 576 x 220ms = just
+ * over two minutes, which is longer than anyone will watch a ribbon. Pacing to a target
+ * duration instead keeps the run to about a minute however many intervals it has.
+ *
+ * The result is clamped: BASE_FRAME_MS is the slowest, so a short run (tiny, 60
+ * intervals) is not stretched to a crawl, and MIN_FRAME_MS is the fastest, so a very
+ * long run never flickers past faster than the eye can follow.
+ */
+const TARGET_RUN_MS = 60_000
+const MIN_FRAME_MS = 40
+
+function frameMsFor(totalIntervals: number): number {
+  if (totalIntervals <= 1) return BASE_FRAME_MS
+  const paced = TARGET_RUN_MS / totalIntervals
+  return Math.max(MIN_FRAME_MS, Math.min(BASE_FRAME_MS, paced))
+}
+
 export const SPEEDS = [1, 2, 4, 8] as const
 export type Speed = (typeof SPEEDS)[number]
 
@@ -122,6 +142,10 @@ export function useReplay(runId: string | null, totalIntervals: number): Replay 
   useEffect(() => {
     if (!playing || frames.length === 0) return
 
+    // Pace off the frames actually in hand, so a run still being computed plays at the
+    // cadence its full length implies rather than sprinting through the prefix.
+    const frameMs = frameMsFor(Math.max(totalIntervals, frames.length))
+
     const id = window.setInterval(() => {
       setT((current) => {
         if (current >= frames.length - 1) {
@@ -131,10 +155,10 @@ export function useReplay(runId: string | null, totalIntervals: number): Replay 
         }
         return current + 1
       })
-    }, BASE_FRAME_MS / speed)
+    }, frameMs / speed)
 
     return () => window.clearInterval(id)
-  }, [playing, speed, frames.length])
+  }, [playing, speed, frames.length, totalIntervals])
 
   const togglePlay = useCallback(() => {
     setPlaying((current) => {

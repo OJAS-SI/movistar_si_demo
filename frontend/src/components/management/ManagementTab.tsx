@@ -13,16 +13,18 @@
 
 import type { ConsoleOut, RunOut } from '../../api/types'
 import type { Alert } from '../../lib/alerts'
-import { LAYER_COLOR, layerLabel, leadTime, num, pct, USE_CASE_LABEL } from '../../lib/format'
+import { LAYER_COLOR, leadTime, num, pct, USE_CASE_LABEL } from '../../lib/format'
+import { layerLabelOf, type T } from '../../lib/i18n'
 import { Icon } from '../Icon'
 
 interface ManagementTabProps {
   model: ConsoleOut
   run: RunOut | null
   alerts: Alert[]
+  tr: T
 }
 
-export function ManagementTab({ model, run, alerts }: ManagementTabProps) {
+export function ManagementTab({ model, run, alerts, tr }: ManagementTabProps) {
   const { scorecard, honest } = model
 
   const nFaults = scorecard.per_use_case.reduce((sum, score) => sum + score.n_faults, 0)
@@ -52,61 +54,61 @@ export function ManagementTab({ model, run, alerts }: ManagementTabProps) {
 
   return (
     <div className="mgmt col">
-      <h2 className="page">Structural Intelligence — run scorecard</h2>
+      <h2 className="page">{tr('mgmt.pageTitle')}</h2>
       <p className="psub">
         {model.config_summary}
         {run && (
           <>
             {' '}
-            · seed <span className="mono">{run.seed}</span> · computed in{' '}
+            · {tr('mgmt.seed')} <span className="mono">{run.seed}</span> · {tr('mgmt.computedIn')}{' '}
             <span className="mono">{num(run.runtime_seconds, 2)}s</span>
           </>
         )}{' '}
-        · measured against ground truth the engine never sees.
+        · {tr('mgmt.againstTruth')}
       </p>
 
       <div className="kpis">
         <div className="kpi brand">
-          <div className="k">Faults detected</div>
+          <div className="k">{tr('mgmt.faultsDetected')}</div>
           <div className="v">
             {nDetected} / {nFaults}
           </div>
-          <div className="d">every injected fault, named</div>
+          <div className="d">{tr('mgmt.faultsDetected.d')}</div>
         </div>
 
         <div className="kpi good">
-          <div className="k">Mean lead time</div>
+          <div className="k">{tr('mgmt.meanLead')}</div>
           <div className="v">{leadTime(meanLead)}</div>
-          <div className="d">before the fault would surface</div>
+          <div className="d">{tr('mgmt.meanLead.d')}</div>
         </div>
 
         <div className="kpi good">
-          <div className="k">Localization</div>
+          <div className="k">{tr('mgmt.localization')}</div>
           <div className="v">{pct(meanLocalization)}</div>
-          <div className="d">the right element, by name</div>
+          <div className="d">{tr('mgmt.localization.d')}</div>
         </div>
 
         <div className="kpi good">
-          <div className="k">False positives</div>
+          <div className="k">{tr('mgmt.falsePositives')}</div>
           <div className="v">{pct(scorecard.false_positive_rate, 1)}</div>
           <div className="d">
-            {scorecard.n_spurious_intervals} spurious of {scorecard.n_non_fault_intervals} quiet
-            intervals
+            {scorecard.n_spurious_intervals} {tr('mgmt.spuriousOf')}{' '}
+            {scorecard.n_non_fault_intervals} {tr('mgmt.quietIntervals')}
           </div>
         </div>
 
         <div className="kpi good">
-          <div className="k">Decoys held</div>
+          <div className="k">{tr('mgmt.decoysHeld')}</div>
           <div className="v">
             {scorecard.n_decoys - scorecard.n_decoys_fired} / {scorecard.n_decoys}
           </div>
-          <div className="d">benign spikes that did not fire</div>
+          <div className="d">{tr('mgmt.decoysHeld.d')}</div>
         </div>
 
         <div className={`kpi ${scorecard.passed ? 'good' : 'hot'}`}>
-          <div className="k">Self-test</div>
+          <div className="k">{tr('mgmt.selfTest')}</div>
           <div className="v">{scorecard.passed ? 'PASS' : 'FAIL'}</div>
-          <div className="d">detected, attributed, box swap avoided</div>
+          <div className="d">{tr('mgmt.selfTest.d')}</div>
         </div>
       </div>
 
@@ -122,27 +124,31 @@ export function ManagementTab({ model, run, alerts }: ManagementTabProps) {
           <table className="worst">
             <thead>
               <tr>
-                <th>Use case</th>
-                <th>Element named</th>
-                <th>Detected</th>
-                <th>Lead</th>
-                <th>Localization</th>
-                <th>Layer</th>
-                <th>Box swap</th>
+                <th>{tr('mgmt.col.useCase')}</th>
+                <th>{tr('mgmt.col.element')}</th>
+                <th>{tr('mgmt.col.detected')}</th>
+                <th>{tr('mgmt.col.lead')}</th>
+                <th>{tr('mgmt.col.localization')}</th>
+                <th>{tr('mgmt.col.layer')}</th>
+                <th>{tr('mgmt.col.boxSwap')}</th>
               </tr>
             </thead>
             <tbody>
-              {scorecard.per_use_case.map((score) => {
-                const alert = alerts.find((candidate) => candidate.useCase === score.use_case)
+              {/* One row per alert, reading that alert's OWN score. The score already
+                  travels on the panel, so there is no row-to-panel join to get wrong -
+                  and no shared React key: 24 rows across 5 use cases meant thirteen
+                  <tr>s keyed "uc1_network_node". */}
+              {alerts.map((alert) => {
+                const score = alert.panel.score
                 return (
-                  <tr key={score.use_case ?? 'unknown'}>
+                  <tr key={alert.id}>
                     <td>
                       <b>{score.use_case ? USE_CASE_LABEL[score.use_case] : '—'}</b>
                       <div style={{ color: 'var(--faint)', fontSize: 10.5, marginTop: 2 }}>
-                        {score.note}
+                        {alert.panel.region} · {score.note}
                       </div>
                     </td>
-                    <td className="el">{alert?.panel.entity ?? '—'}</td>
+                    <td className="el">{alert.panel.entity}</td>
                     <td>
                       <span className={`pill ${score.n_detected >= score.n_faults ? 'good' : 'hot'}`}>
                         {score.n_detected} / {score.n_faults}
@@ -178,7 +184,7 @@ export function ManagementTab({ model, run, alerts }: ManagementTabProps) {
                   <div key={layer} className="layer-cell">
                     <div className="lh">
                       <span className="d" style={{ background: LAYER_COLOR[layer] }} />
-                      {layerLabel(layer)}
+                      {layerLabelOf(layer, tr)}
                     </div>
                     <div className="lv" style={{ color: entry ? LAYER_COLOR[layer] : 'var(--faint)' }}>
                       {entry ? entry.verdicts : 0}
@@ -208,21 +214,21 @@ export function ManagementTab({ model, run, alerts }: ManagementTabProps) {
             </div>
             <div className="impact-grid">
               <div className="stat good">
-                <div className="k">Decoys fired</div>
+                <div className="k">{tr('mgmt.decoysFired')}</div>
                 <div className="v">
                   {honest.n_decoys_fired}
                   <small> / {honest.n_decoys}</small>
                 </div>
               </div>
               <div className="stat good">
-                <div className="k">Abstentions</div>
+                <div className="k">{tr('mgmt.abstentions')}</div>
                 <div className="v">{honest.abstention ? 1 : 0}</div>
               </div>
             </div>
             <p className="shape-note">
               {honest.abstention
-                ? 'Where the evidence would not resolve to a layer, the engine declined to name one. An abstention is a feature: it is the boundary of its own competence, stated out loud.'
-                : 'The engine resolved every disturbance it saw in this run.'}
+                ? tr('mgmt.abstention.some')
+                : tr('mgmt.abstention.none')}
             </p>
           </div>
         </div>

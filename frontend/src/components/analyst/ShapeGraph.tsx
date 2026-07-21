@@ -17,10 +17,23 @@
  */
 
 import type { FaultPanelOut } from '../../api/types'
+import type { T } from '../../lib/i18n'
 import { C } from '../../lib/format'
 
 const WIDTH = 520
-const HEIGHT = 230
+/**
+ * The drawing is authored against a 230-tall canvas and stretched to HEIGHT.
+ *
+ * The card it sits in now runs to the transport bar, and the SVG scales with
+ * `xMidYMid meet` - so with the old 520x230 box the drawing was width-limited and the
+ * extra height became letterboxing rather than a bigger picture. Spreading the canvas
+ * vertically spends that space on separation between the rows instead. `vy` scales the
+ * authored y values; radii and font sizes are deliberately left alone, so the nodes
+ * stay round and legible and only the layout opens up.
+ */
+const HEIGHT = 320
+const AUTHORED_HEIGHT = 230
+const vy = (y: number) => +(y * (HEIGHT / AUTHORED_HEIGHT)).toFixed(1)
 
 interface ShapeGraphProps {
   panel: FaultPanelOut
@@ -28,9 +41,10 @@ interface ShapeGraphProps {
   progress: number
   /** True once the engine has named the element. */
   named: boolean
+  tr: T
 }
 
-export function ShapeGraph({ panel, progress, named }: ShapeGraphProps) {
+export function ShapeGraph({ panel, progress, named, tr }: ShapeGraphProps) {
   const affected = panel.affected.length
   // Once the element is named the whole shape is lit; before that it fills in.
   const fraction = named ? 1 : Math.max(0, Math.min(1, progress))
@@ -53,16 +67,16 @@ export function ShapeGraph({ panel, progress, named }: ShapeGraphProps) {
 
       <div className="legend">
         <span>
-          <i className="lg-dot" style={{ background: C.red }} /> impaired home
+          <i className="lg-dot" style={{ background: C.red }} /> {tr('graph.impaired')}
         </span>
         <span>
-          <i className="lg-dot" style={{ background: C.amber }} /> just starting to drift
+          <i className="lg-dot" style={{ background: C.amber }} /> {tr('graph.drifting')}
         </span>
         <span>
-          <i className="lg-dot" style={{ background: C.off }} /> healthy peer
+          <i className="lg-dot" style={{ background: C.off }} /> {tr('graph.healthyPeer')}
         </span>
         <span>
-          <i className="lg-dot" style={{ background: C.cyan }} /> the named element
+          <i className="lg-dot" style={{ background: C.cyan }} /> {tr('graph.namedElement')}
         </span>
       </div>
     </>
@@ -119,19 +133,19 @@ function ClusterShape({ panel, lit, affected }: { panel: FaultPanelOut; lit: num
   // about *which* homes, not just how many.
   const total = Math.max(affected + 6, 12)
   const cx = WIDTH / 2
-  const rows = [150, 185, 212]
+  const rows = [vy(150), vy(185), vy(212)]
   const spread = 420
 
   return (
     <>
-      <text x={cx} y={18} textAnchor="middle" fill={C.muted} fontSize={9}>
+      <text x={cx} y={vy(18)} textAnchor="middle" fill={C.muted} fontSize={9}>
         central office
       </text>
-      <circle cx={cx} cy={30} r={9} fill="none" stroke={C.cyan} strokeWidth={2} />
-      <circle cx={cx} cy={30} r={15} fill="none" stroke={C.cyan} strokeWidth={1} opacity={0.4} />
-      <line x1={cx} y1={39} x2={cx} y2={68} stroke="#254a6b" strokeWidth={1.5} />
+      <circle cx={cx} cy={vy(30)} r={9} fill="none" stroke={C.cyan} strokeWidth={2} />
+      <circle cx={cx} cy={vy(30)} r={15} fill="none" stroke={C.cyan} strokeWidth={1} opacity={0.4} />
+      <line x1={cx} y1={vy(39)} x2={cx} y2={vy(68)} stroke="#254a6b" strokeWidth={1.5} />
 
-      <Element x={cx} y={78} label={panel.entity} />
+      <Element x={cx} y={vy(78)} label={panel.entity} />
 
       {Array.from({ length: total }, (_, i) => {
         const offset = i / (total - 1) - 0.5
@@ -143,7 +157,7 @@ function ClusterShape({ panel, lit, affected }: { panel: FaultPanelOut; lit: num
           <g key={i}>
             <line
               x1={cx}
-              y1={88}
+              y1={vy(88)}
               x2={x}
               y2={y}
               stroke={on ? '#4a2530' : '#152e46'}
@@ -162,17 +176,17 @@ function SingleShape({ panel, lit }: { panel: FaultPanelOut; lit: number }) {
   const cx = WIDTH / 2
   const peers = 8
   const spread = 380
-  const y = 175
+  const y = vy(175)
   const on = lit > 0
 
   return (
     <>
-      <text x={cx} y={18} textAnchor="middle" fill={C.muted} fontSize={9}>
+      <text x={cx} y={vy(18)} textAnchor="middle" fill={C.muted} fontSize={9}>
         access node — peers healthy
       </text>
-      <circle cx={cx} cy={30} r={9} fill="none" stroke={C.cyan} strokeWidth={2} />
-      <line x1={cx} y1={39} x2={cx} y2={68} stroke="#254a6b" strokeWidth={1.5} />
-      <Element x={cx} y={78} label={panel.entity} />
+      <circle cx={cx} cy={vy(30)} r={9} fill="none" stroke={C.cyan} strokeWidth={2} />
+      <line x1={cx} y1={vy(39)} x2={cx} y2={vy(68)} stroke="#254a6b" strokeWidth={1.5} />
+      <Element x={cx} y={vy(78)} label={panel.entity} />
 
       {Array.from({ length: peers }, (_, i) => {
         const offset = i / (peers - 1) - 0.5
@@ -182,7 +196,7 @@ function SingleShape({ panel, lit }: { panel: FaultPanelOut; lit: number }) {
           <g key={i}>
             <line
               x1={cx}
-              y1={88}
+              y1={vy(88)}
               x2={x}
               y2={y}
               stroke={isTarget && on ? '#4a2530' : '#152e46'}
@@ -205,7 +219,7 @@ function SingleShape({ panel, lit }: { panel: FaultPanelOut; lit: number }) {
         )
       })}
 
-      <text x={cx} y={212} textAnchor="middle" fill={C.faint} fontSize={9.5}>
+      <text x={cx} y={vy(212)} textAnchor="middle" fill={C.faint} fontSize={9.5}>
         every peer on this node stays at baseline — so the cause is inside the home
       </text>
     </>
@@ -215,15 +229,15 @@ function SingleShape({ panel, lit }: { panel: FaultPanelOut; lit: number }) {
 /** Impairment strung along a route: the core. The shape spreads hop by hop. */
 function PathShape({ panel, fraction }: { panel: FaultPanelOut; fraction: number }) {
   const hops = 6
-  const y0 = 190
-  const y1 = 60
+  const y0 = vy(190)
+  const y1 = vy(60)
   const x0 = 60
   const x1 = WIDTH - 60
   const lit = Math.round(hops * fraction)
 
   return (
     <>
-      <text x={WIDTH / 2} y={18} textAnchor="middle" fill={C.muted} fontSize={9}>
+      <text x={WIDTH / 2} y={vy(18)} textAnchor="middle" fill={C.muted} fontSize={9}>
         core / transport route
       </text>
       <line x1={x0} y1={y0} x2={x1} y2={y1} stroke="#254a6b" strokeWidth={1.5} />
@@ -252,15 +266,15 @@ function PathShape({ panel, fraction }: { panel: FaultPanelOut; fraction: number
 function SourceShape({ panel, lit, affected }: { panel: FaultPanelOut; lit: number; affected: number }) {
   const cx = WIDTH / 2
   const total = Math.max(affected + 4, 10)
-  const y = 180
+  const y = vy(180)
   const spread = 440
 
   return (
     <>
-      <text x={cx} y={18} textAnchor="middle" fill={C.muted} fontSize={9}>
+      <text x={cx} y={vy(18)} textAnchor="middle" fill={C.muted} fontSize={9}>
         content source — homes share no network parent
       </text>
-      <Element x={cx} y={44} label={panel.entity} />
+      <Element x={cx} y={vy(44)} label={panel.entity} />
 
       {Array.from({ length: total }, (_, i) => {
         const offset = i / (total - 1) - 0.5
@@ -270,7 +284,7 @@ function SourceShape({ panel, lit, affected }: { panel: FaultPanelOut; lit: numb
           <g key={i}>
             <line
               x1={cx}
-              y1={56}
+              y1={vy(56)}
               x2={x}
               y2={y}
               stroke={on ? '#4a2530' : '#152e46'}

@@ -9,6 +9,7 @@
  * API serves the built app itself, so the same relative paths work unchanged.
  */
 
+import type { Lang } from '../lib/i18n'
 import type {
   ConsoleOut,
   HealthOut,
@@ -60,6 +61,29 @@ async function detailOf(response: Response): Promise<string> {
   return `${response.status} ${response.statusText}`
 }
 
+/**
+ * The language every read carries.
+ *
+ * The engine's sentences are rendered server-side, so the client cannot translate them
+ * after the fact - it has to ask in the right language. This is module state rather
+ * than a parameter on twenty call sites because the language is a property of the
+ * session, not of any one request, and the WebSocket needs it too.
+ */
+let currentLang: Lang = 'en'
+
+export function setApiLang(lang: Lang): void {
+  currentLang = lang
+}
+
+export function apiLang(): Lang {
+  return currentLang
+}
+
+/** Append `lang` without caring whether the path already has a query string. */
+function withLang(path: string): string {
+  return `${path}${path.includes('?') ? '&' : '?'}lang=${currentLang}`
+}
+
 export const api = {
   health: () => request<HealthOut>('/health'),
 
@@ -86,12 +110,12 @@ export const api = {
   getRun: (runId: string) => request<RunOut>(`/runs/${runId}`),
 
   /** The whole story of the run in one payload. This is what the console renders. */
-  getConsole: (runId: string) => request<ConsoleOut>(`/runs/${runId}/console`),
+  getConsole: (runId: string) => request<ConsoleOut>(withLang(`/runs/${runId}/console`)),
 
-  getScorecard: (runId: string) => request<ScorecardOut>(`/runs/${runId}/scorecard`),
+  getScorecard: (runId: string) => request<ScorecardOut>(withLang(`/runs/${runId}/scorecard`)),
 
   getTopology: (runId: string, limit = 2000) =>
-    request<TopologyOut>(`/runs/${runId}/topology?limit=${limit}`),
+    request<TopologyOut>(withLang(`/runs/${runId}/topology?limit=${limit}`)),
 
   /** The original single-file HTML console, still served by the API. */
   consoleHtmlUrl: (runId: string) => `${BASE}/runs/${runId}/console.html`,

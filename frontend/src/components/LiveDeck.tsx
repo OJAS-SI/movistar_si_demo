@@ -44,16 +44,16 @@ export function LiveDeck({
           <h2>{tr('live.watching')}</h2>
           <div className="headmeta" style={{ marginLeft: 0 }}>
             <span className="hm">
-              <b className="mono">{live.length}</b> named so far
+              <b className="mono">{live.length}</b> {tr('live.namedSoFar')}
             </span>
             <span className="hm">
-              interval <b className="mono">{t}</b> / {totalIntervals - 1}
+              {tr('transport.interval').toLowerCase()} <b className="mono">{t}</b> / {totalIntervals - 1}
             </span>
             <span className="hm">
               <b className="mono">{clockAt(t, intervalSeconds)}</b>
             </span>
             <span className="hm">
-              <b className="mono">{frame?.n_core_records ?? 0}</b> four-field records this interval
+              <b className="mono">{frame?.n_core_records ?? 0}</b> {tr('live.records')}
             </span>
           </div>
         </div>
@@ -63,7 +63,7 @@ export function LiveDeck({
       <div className="live-progress" role="progressbar" aria-valuenow={pctDone}>
         <i style={{ width: `${pctDone}%` }} />
         <span className="live-progress-label">
-          computing the full picture · <b className="mono">{pctDone}%</b>
+          {tr('live.computing')} <b className="mono">{pctDone}%</b>
         </span>
       </div>
 
@@ -73,12 +73,10 @@ export function LiveDeck({
             <span className="ico">
               <Icon name="eye" />
             </span>
-            Learning what normal looks like
+            {tr('live.learningTitle')}
           </div>
           <p style={{ margin: 0, color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.6 }}>
-            The engine is establishing each edge's baseline from the four-field stream. Nothing
-            has cleared the dwell gate yet — the first named fault will appear here the interval
-            it does, and the rest will follow as the run computes.
+            {tr('live.learningBody')}
           </p>
         </div>
       ) : (
@@ -97,11 +95,12 @@ export function LiveDeck({
                 <div className="qmeta">
                   <span className="chip layer">{layerLabelOf(fault.layer, tr)}</span>
                   <span className="chip">
-                    named <b className="mono">{clockAt(fault.firstSeen, intervalSeconds)}</b>
+                    {tr('live.named')} <b className="mono">{clockAt(fault.firstSeen, intervalSeconds)}</b>
                   </span>
                   {fault.nAffected > 0 && (
                     <span className="chip">
-                      <b>{fault.nAffected}</b> home{fault.nAffected === 1 ? '' : 's'}
+                      <b>{fault.nAffected}</b>{' '}
+                      {tr(fault.nAffected === 1 ? 'alerts.home' : 'alerts.homes')}
                     </span>
                   )}
                 </div>
@@ -121,9 +120,7 @@ export function LiveDeck({
       )}
 
       <p className="live-foot">
-        The full analyst view — the four-beat narrative, the certified receipts, and the
-        scorecard measured against ground truth — opens automatically once the run finishes
-        computing. Mean magnitude this interval{' '}
+        {tr('live.foot')}{' '}
         <b className="mono">{num(frame?.mean_magnitude, 2)}</b>.
       </p>
     </div>

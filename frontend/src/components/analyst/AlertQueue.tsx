@@ -53,9 +53,9 @@ export function AlertQueue({
       <div className="rail-scroll">
         {visible.length === 0 ? (
           <p className="empty-q">
-          Nothing is forming yet. The engine is watching{' '}
-          <span className="mono">{model.config_summary.split(',')[0]}</span> and learning
-          what normal looks like.
+          {tr('alerts.emptyA')}{' '}
+          <span className="mono">{model.config_summary.split(',')[0]}</span>{' '}
+          {tr('alerts.emptyB')}
         </p>
       ) : (
         <div className="queue">
@@ -103,7 +103,10 @@ export function AlertQueue({
                   <span className="chip">{panel.region}</span>
                   {isNamed && (
                     <span className="chip">
-                      <b>{alert.nAffected}</b> home{alert.nAffected === 1 ? '' : 's'}
+                      {/* Not `home` + 's': Spanish pluralises hogar -> hogares, so the
+                          plural has to come from the catalogue, not from a suffix. */}
+                      <b>{alert.nAffected}</b>{' '}
+                      {tr(alert.nAffected === 1 ? 'alerts.home' : 'alerts.homes')}
                     </span>
                   )}
                 </div>
@@ -125,7 +128,8 @@ export function AlertQueue({
                 ) : (
                   <div className="qshi">
                     <span className="val" style={{ color: 'var(--faint)' }}>
-                      began {clockAt(alert.onsetAt ?? t, intervalSeconds)} · below the dwell gate
+                      {tr('alerts.began')} {clockAt(alert.onsetAt ?? t, intervalSeconds)}{' '}
+                      {tr('alerts.belowDwell')}
                     </span>
                   </div>
                 )}

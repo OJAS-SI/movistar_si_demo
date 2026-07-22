@@ -171,7 +171,7 @@ export function Transport({
               preserveAspectRatio="none"
               aria-hidden="true"
             >
-              <path d={trace} fill="none" stroke="#2a557c" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+              <path d={trace} fill="none" stroke="#2f5a9e" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
             </svg>
 
             <div className="fill" style={{ width: at(t) }} />

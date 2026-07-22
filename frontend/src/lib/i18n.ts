@@ -76,6 +76,13 @@ const STRINGS = {
   'layerLabel.core': ['Core / transport', 'Core / transporte'],
   'layerLabel.content': ['Content / CDN', 'Contenido / CDN'],
   'layerLabel.unresolved': ['Unresolved', 'Sin resolver'],
+  'useCase.uc1_network_node': ['Network node degrading', 'Nodo de red degradándose'],
+  'useCase.uc2_individual': ['Household declining', 'Hogar en declive'],
+  'useCase.uc3_invisible': ['Invisible fault', 'Fallo invisible'],
+  'useCase.uc4_core_path': ['Core route degrading', 'Ruta de core degradándose'],
+  'useCase.uc5_content_source': ['Content source degrading', 'Fuente de contenido degradándose'],
+  'useCase.decoy': ['Decoy', 'Señuelo'],
+  'useCase.healthy': ['Healthy', 'Sano'],
   'shapeLabel.single': ['Single (isolated home)', 'Individual (hogar aislado)'],
   'shapeLabel.cluster': ['Cluster (behind one node)', 'Clúster (tras un mismo nodo)'],
   'shapeLabel.path': ['Path (along a route)', 'Camino (a lo largo de una ruta)'],
@@ -122,6 +129,21 @@ const STRINGS = {
   'verdict.shapeOnGraph': ['The shape on the graph', 'La firma sobre el grafo'],
   'verdict.detectionNarrative': ['Detection narrative', 'Relato de la detección'],
   'verdict.namedAt': ['Named at interval', 'Identificado en el intervalo'],
+  'verdict.formingSince': [
+    ', while the fault had been forming since',
+    ', cuando el fallo ya se estaba formando desde',
+  ],
+  'verdict.notSurfaced': [
+    'and had not yet surfaced to a single customer.',
+    'y todavía no había aflorado a ningún cliente.',
+  ],
+  'verdict.rising': ['Rising', 'En aumento'],
+  'verdict.stable': ['Stable', 'Estable'],
+  'verdict.onThisTrend': [
+    '; on this trend it would broaden around interval',
+    '; con esta tendencia se extendería hacia el intervalo',
+  ],
+  'gauge.confidence': ['confidence', 'confianza'],
 
   // ----- measured against ground truth -----
   'measured.title': ['Measured against ground truth', 'Medido frente a la verdad de referencia'],
@@ -325,6 +347,101 @@ const STRINGS = {
     'Vigilando la red en directo: los fallos aparecen en cuanto el motor los identifica',
   ],
 
+  // ----- the live deck (before the full run has computed) -----
+  'live.namedSoFar': ['named so far', 'identificados hasta ahora'],
+  'live.records': ['four-field records this interval', 'registros de cuatro campos en este intervalo'],
+  'live.computing': ['computing the full picture ·', 'calculando la imagen completa ·'],
+  'live.learningTitle': ['Learning what normal looks like', 'Aprendiendo qué es lo normal'],
+  'live.learningBody': [
+    "The engine is establishing each edge's baseline from the four-field stream. Nothing has cleared the dwell gate yet — the first named fault will appear here the interval it does, and the rest will follow as the run computes.",
+    'El motor está estableciendo la línea base de cada enlace a partir del flujo de cuatro campos. Todavía nada ha superado el umbral de permanencia: el primer fallo identificado aparecerá aquí en el intervalo en que lo haga, y el resto irán llegando según avance el cálculo.',
+  ],
+
+  // ----- the shape graph's own labels -----
+  'graph.centralOffice': ['central office', 'central'],
+  'graph.accessNodePeers': ['access node — peers healthy', 'nodo de acceso — vecinos sanos'],
+  'graph.peersAtBaseline': [
+    'every peer on this node stays at baseline — so the cause is inside the home',
+    'todos los vecinos del nodo siguen en línea base, así que la causa está dentro del hogar',
+  ],
+  'graph.coreRoute': ['core / transport route', 'ruta de core / transporte'],
+  'graph.contentSource': [
+    'content source — homes share no network parent',
+    'fuente de contenido — los hogares no comparten padre de red',
+  ],
+
+  // ----- the shape notes under the graph -----
+  'shapeNote.single.a': ['One home is impaired while every peer on', 'Un solo hogar está afectado mientras que todos los vecinos de'],
+  'shapeNote.single.b': [
+    'stays at baseline. Isolation is the attribution: the fault is inside this household, so the fix is a call and a reconfiguration — not a truck.',
+    'siguen en línea base. El aislamiento es la atribución: el fallo está dentro de este hogar, así que la solución es una llamada y una reconfiguración, no un desplazamiento.',
+  ],
+  'shapeNote.cluster.a': ['All', 'Los'],
+  'shapeNote.cluster.b': ['impaired homes sit behind', 'hogares afectados cuelgan de'],
+  'shapeNote.cluster.c': [
+    '. A shared parent is the attribution: the fault lives at the access node, not in any one home.',
+    '. El padre compartido es la atribución: el fallo está en el nodo de acceso, no en ningún hogar concreto.',
+  ],
+  'shapeNote.path.a': ['The impairment runs along a route through', 'El deterioro recorre una ruta que pasa por'],
+  'shapeNote.path.b': [
+    ', crossing homes that share nothing else. That is a core-transport signature.',
+    ', atravesando hogares que no comparten nada más. Esa es la firma del transporte de core.',
+  ],
+  'shapeNote.source.a': [
+    'Homes with no network parent in common degrade together behind',
+    'Hogares sin padre de red en común se degradan a la vez por detrás de',
+  ],
+  'shapeNote.source.b': [
+    '. Only a shared content source explains that.',
+    '. Solo una fuente de contenido compartida explica eso.',
+  ],
+
+  // ----- alert queue empty state -----
+  'alerts.emptyA': ['Nothing is forming yet. The engine is watching', 'Todavía no se está formando nada. El motor está vigilando'],
+  'alerts.emptyB': ['and learning what normal looks like.', 'y aprendiendo qué es lo normal.'],
+
+  // ----- receipt extras -----
+  'receipt.why': [
+    'Why the engine believes this, what would have proved it wrong, and where every number came from.',
+    'Por qué el motor lo cree, qué lo habría refutado y de dónde procede cada cifra.',
+  ],
+  'receipt.whatItLookedAt': ['What it looked at', 'Qué ha examinado'],
+
+  // ----- management sections -----
+  'mgmt.perUseCase': ['Per use case, measured', 'Por caso de uso, medido'],
+  'mgmt.layersImplicated': ['Layers implicated', 'Capas implicadas'],
+  'mgmt.layersBody': [
+    'The engine placed every fault in its true layer. That is what turns a verdict into',
+    'El motor situó cada fallo en su capa real. Eso es lo que convierte un veredicto en',
+  ],
+  'mgmt.refused': ['What it refused to do', 'Lo que se negó a hacer'],
+  'mgmt.scorecardAsPrinted': ['The scorecard, as the engine prints it', 'El marcador, tal y como lo imprime el motor'],
+
+  // ----- map extras -----
+  'map.namedByEngine': ['element named by the engine', 'elemento identificado por el motor'],
+  'map.provinceNote': [
+    '— the leading pair of the MIGA central-office identifier, reproduced in every node id below.',
+    '— el par inicial del identificador de central MIGA, reproducido en cada id de nodo de abajo.',
+  ],
+  'map.centralOffice': ['central office', 'central'],
+  'map.province': ['Province', 'Provincia'],
+  'map.atInterval': ['At interval', 'En el intervalo'],
+  'map.faultBadge': ['fault', 'fallo'],
+  'live.named': ['named', 'identificado'],
+  'live.foot': [
+    'The full analyst view — the four-beat narrative, the certified receipts, and the scorecard measured against ground truth — opens automatically once the run finishes computing. Mean magnitude this interval',
+    'La vista completa de analista —el relato en cuatro tiempos, los recibos certificados y el marcador medido frente a la verdad de referencia— se abre automáticamente en cuanto termina el cálculo. Magnitud media en este intervalo',
+  ],
+  'receipt.intervals': ['Intervals', 'Intervalos'],
+  'receipt.entitiesExamined': ['entities examined', 'entidades examinadas'],
+  'alerts.began': ['began', 'empezó'],
+  'alerts.belowDwell': ['· below the dwell gate', '· por debajo del umbral de permanencia'],
+  'mgmt.behindIt': ['behind it', 'por detrás'],
+  'mgmt.layersBody2': [
+    'an action: a home fault is a phone call, an access fault is a field visit, and telling them apart is the difference between a fix and a wasted truck.',
+    'una acción: un fallo de hogar es una llamada, un fallo de acceso es una visita de campo, y distinguirlos es la diferencia entre una reparación y un desplazamiento inútil.',
+  ],
+
   // ----- states -----
   'state.startingTiny': ['Running the tiny network', 'Ejecutando la red reducida'],
   'state.startingFull': ['Running the full six-region network', 'Ejecutando la red completa de seis regiones'],
@@ -363,4 +480,17 @@ export function layerLabelOf(layer: string | null, t: T): string {
 export function shapeLabelOf(shape: string, t: T): string {
   const key = `shapeLabel.${shape}` as StringKey
   return key in STRINGS ? t(key) : shape
+}
+
+/**
+ * The use case a verdict belongs to, as words.
+ *
+ * Named `labelForUseCase`, not `useCaseLabelOf`: a leading "use" makes every React lint
+ * rule treat a function as a hook and refuse to let a callback call it. `format.ts`
+ * carries the same note for the same reason.
+ */
+export function labelForUseCase(useCase: string | null, t: T): string {
+  if (!useCase) return '—'
+  const key = `useCase.${useCase}` as StringKey
+  return key in STRINGS ? t(key) : useCase
 }

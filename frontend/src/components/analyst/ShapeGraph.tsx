@@ -55,13 +55,13 @@ export function ShapeGraph({ panel, progress, named, tr }: ShapeGraphProps) {
       <svg className="shape-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img"
            aria-label={`${panel.shape} shape on ${panel.entity}`}>
         {panel.shape === 'single' ? (
-          <SingleShape panel={panel} lit={lit} />
+          <SingleShape panel={panel} lit={lit} tr={tr} />
         ) : panel.shape === 'path' ? (
-          <PathShape panel={panel} fraction={fraction} />
+          <PathShape panel={panel} fraction={fraction} tr={tr} />
         ) : panel.shape === 'source' ? (
-          <SourceShape panel={panel} lit={lit} affected={affected} />
+          <SourceShape panel={panel} lit={lit} affected={affected} tr={tr} />
         ) : (
-          <ClusterShape panel={panel} lit={lit} affected={affected} />
+          <ClusterShape panel={panel} lit={lit} affected={affected} tr={tr} />
         )}
       </svg>
 
@@ -128,7 +128,7 @@ function Element({ x, y, label }: { x: number; y: number; label: string }) {
 }
 
 /** Homes behind one access node: the cluster. */
-function ClusterShape({ panel, lit, affected }: { panel: FaultPanelOut; lit: number; affected: number }) {
+function ClusterShape({ panel, lit, affected, tr }: { panel: FaultPanelOut; lit: number; affected: number; tr: T }) {
   // Draw the affected homes plus a few healthy peers, so "clustered" is visibly a claim
   // about *which* homes, not just how many.
   const total = Math.max(affected + 6, 12)
@@ -139,7 +139,7 @@ function ClusterShape({ panel, lit, affected }: { panel: FaultPanelOut; lit: num
   return (
     <>
       <text x={cx} y={vy(18)} textAnchor="middle" fill={C.muted} fontSize={9}>
-        central office
+        {tr('graph.centralOffice')}
       </text>
       <circle cx={cx} cy={vy(30)} r={9} fill="none" stroke={C.cyan} strokeWidth={2} />
       <circle cx={cx} cy={vy(30)} r={15} fill="none" stroke={C.cyan} strokeWidth={1} opacity={0.4} />
@@ -172,7 +172,7 @@ function ClusterShape({ panel, lit, affected }: { panel: FaultPanelOut; lit: num
 }
 
 /** One home alone, its peers on the same node untouched. */
-function SingleShape({ panel, lit }: { panel: FaultPanelOut; lit: number }) {
+function SingleShape({ panel, lit, tr }: { panel: FaultPanelOut; lit: number; tr: T }) {
   const cx = WIDTH / 2
   const peers = 8
   const spread = 380
@@ -182,7 +182,7 @@ function SingleShape({ panel, lit }: { panel: FaultPanelOut; lit: number }) {
   return (
     <>
       <text x={cx} y={vy(18)} textAnchor="middle" fill={C.muted} fontSize={9}>
-        access node — peers healthy
+        {tr('graph.accessNodePeers')}
       </text>
       <circle cx={cx} cy={vy(30)} r={9} fill="none" stroke={C.cyan} strokeWidth={2} />
       <line x1={cx} y1={vy(39)} x2={cx} y2={vy(68)} stroke="#254a6b" strokeWidth={1.5} />
@@ -220,14 +220,14 @@ function SingleShape({ panel, lit }: { panel: FaultPanelOut; lit: number }) {
       })}
 
       <text x={cx} y={vy(212)} textAnchor="middle" fill={C.faint} fontSize={9.5}>
-        every peer on this node stays at baseline — so the cause is inside the home
+        {tr('graph.peersAtBaseline')}
       </text>
     </>
   )
 }
 
 /** Impairment strung along a route: the core. The shape spreads hop by hop. */
-function PathShape({ panel, fraction }: { panel: FaultPanelOut; fraction: number }) {
+function PathShape({ panel, fraction, tr }: { panel: FaultPanelOut; fraction: number; tr: T }) {
   const hops = 6
   const y0 = vy(190)
   const y1 = vy(60)
@@ -238,7 +238,7 @@ function PathShape({ panel, fraction }: { panel: FaultPanelOut; fraction: number
   return (
     <>
       <text x={WIDTH / 2} y={vy(18)} textAnchor="middle" fill={C.muted} fontSize={9}>
-        core / transport route
+        {tr('graph.coreRoute')}
       </text>
       <line x1={x0} y1={y0} x2={x1} y2={y1} stroke="#254a6b" strokeWidth={1.5} />
 
@@ -263,7 +263,7 @@ function PathShape({ panel, fraction }: { panel: FaultPanelOut; fraction: number
 }
 
 /** One origin, many unrelated homes: the content source. */
-function SourceShape({ panel, lit, affected }: { panel: FaultPanelOut; lit: number; affected: number }) {
+function SourceShape({ panel, lit, affected, tr }: { panel: FaultPanelOut; lit: number; affected: number; tr: T }) {
   const cx = WIDTH / 2
   const total = Math.max(affected + 4, 10)
   const y = vy(180)
@@ -272,7 +272,7 @@ function SourceShape({ panel, lit, affected }: { panel: FaultPanelOut; lit: numb
   return (
     <>
       <text x={cx} y={vy(18)} textAnchor="middle" fill={C.muted} fontSize={9}>
-        content source — homes share no network parent
+        {tr('graph.contentSource')}
       </text>
       <Element x={cx} y={vy(44)} label={panel.entity} />
 

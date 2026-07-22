@@ -1,0 +1,13 @@
+{
+  "name": "movistar-si-video",
+  "private": true,
+  "type": "module",
+  "description": "Automated demo recording: TTS narration, scripted UI walkthrough, composited video.",
+  "scripts": {
+    "tts": "node tts.mjs",
+    "record": "node record.mjs",
+    "build": "node build.mjs",
+    "all": "node tts.mjs && node record.mjs && node build.mjs"
+  },
+  "devDependencies": { "playwright": "^1.49.0" }
+}

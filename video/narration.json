@@ -1,0 +1,243 @@
+{
+  "meta": {
+    "lang": "es",
+    "scale": "full",
+    "note": "Full scale only. Structure: animated logo -> the technology -> the three Movistar use cases and how SI solves each -> quick panel tour -> the full 60s simulation at 1x -> three faults in depth -> four fields -> outro.",
+    "targetSeconds": 330
+  },
+  "segments": [
+    {
+      "id": "01-logo",
+      "seconds": 9,
+      "screen": "logo",
+      "text": "Future Space. Donde el futuro se hace presente."
+    },
+    {
+      "id": "02-tech",
+      "seconds": 1,
+      "screen": "tech",
+      "plate": "Movistar Service Intelligence Twin · Future Space SA",
+      "text": "Structural Intelligence es una inteligencia artificial que razona sobre reglas físicas y topología de red, y no sobre grandes históricos etiquetados. Lee un fallo como una forma sobre el grafo de servicio. Por eso aprende con muy pocos datos, y por eso encaja en infraestructuras críticas, donde el dato es escaso, sensible o sencillamente no está etiquetado."
+    },
+    {
+      "id": "03-usecases",
+      "seconds": 1,
+      "screen": "usecases",
+      "plate": "El problema de Movistar",
+      "text": "Tres problemas del proyecto con Telefónica, y cómo los resuelve el mismo mecanismo. Uno: nodos de red. Hoy un fallo en un nodo de acceso aflora como reclamaciones dispersas, y cuando se correlacionan ya hay muchos hogares degradados. El motor lee el clúster que se forma sobre un mismo nodo y lo nombra antes de la oleada de llamadas. Dos: clientes individuales. Un hogar solo es visible cuando llama. El motor lo puntúa contra su propia línea base y comprueba en el grafo que sus vecinos están sanos. Tres: fallos invisibles, sin ninguna etiqueta en el dato, donde se sustituye el descodificador y el fallo vuelve. La firma estructural sobrevive a esa sustitución: exonera el equipo y sitúa el fallo en su capa real."
+    },
+    {
+      "id": "04-panels",
+      "seconds": 1,
+      "actions": [
+        {
+          "do": "seek",
+          "interval": 210
+        }
+      ],
+      "beats": [
+        {
+          "at": 0,
+          "highlight": ".rail",
+          "label": "Alertas activas"
+        },
+        {
+          "at": 9,
+          "highlight": ".honesty",
+          "label": "Instrumentos de honestidad"
+        },
+        {
+          "at": 18,
+          "highlight": ".shape-card",
+          "label": "La firma sobre el grafo"
+        },
+        {
+          "at": 26,
+          "highlight": ".call-card",
+          "label": "El veredicto"
+        },
+        {
+          "at": 33,
+          "highlight": ".right",
+          "label": "Recibo de decisión certificada"
+        }
+      ],
+      "text": "Esta es la consola del operador. A la izquierda, las alertas activas. Debajo, fijos, los instrumentos de honestidad: lo que el motor se ha negado a decir. En el centro, la firma sobre el grafo. Y a la derecha, el veredicto y el recibo de decisión certificada: afirmación, evidencia, contraste y procedencia de cada cifra."
+    },
+    {
+      "id": "05-sim",
+      "seconds": 66,
+      "actions": [
+        {
+          "do": "seek",
+          "interval": 0
+        },
+        {
+          "do": "speed",
+          "value": 1
+        },
+        {
+          "do": "play"
+        }
+      ],
+      "beats": [
+        {
+          "at": 0,
+          "highlight": ".config",
+          "label": "La ejecución"
+        },
+        {
+          "at": 10,
+          "highlight": ".transport",
+          "label": "Cuarenta y ocho horas de red"
+        },
+        {
+          "at": 30,
+          "highlight": null,
+          "label": null
+        }
+      ],
+      "text": "Ejecutamos la simulación completa. Es un modelo sintético de una red española tipo Telefónica: sin datos de Movistar. Dos mil cuatrocientos hogares, cuarenta y un nodos de acceso, seis regiones y cuarenta y ocho horas de tiempo de red, en un minuto. Cada elemento emite un único número por intervalo, y esa traza azul es lo único que el motor puede leer: sin códigos de error, sin alarmas, sin etiquetas. Las marcas rojas son el inicio real de cada fallo. Las verdes, el momento en que el motor lo identifica. La distancia entre ambas es la antelación con la que trabaja el operador. Y en ámbar, los transitorios benignos: los señuelos que deben tentar al motor sin hacerle disparar. Se inyectan veinticuatro fallos y tres señuelos, y como cada uno se inyecta, cada respuesta se puntúa contra una verdad conocida."
+    },
+    {
+      "id": "06a-node",
+      "seconds": 1,
+      "actions": [
+        {
+          "do": "pause"
+        },
+        {
+          "do": "seek",
+          "interval": 95
+        },
+        {
+          "do": "clickAlertByEntity",
+          "entity": "OLT-2800001-01"
+        }
+      ],
+      "beats": [
+        {
+          "at": 0,
+          "highlight": ".alert-head",
+          "label": "Caso 1 · nodo de acceso · Madrid metro"
+        },
+        {
+          "at": 11,
+          "highlight": ".shape-card",
+          "label": "Veinte hogares, un mismo padre"
+        },
+        {
+          "at": 22,
+          "highlight": ".right",
+          "label": "La evidencia"
+        },
+        {
+          "at": 32,
+          "highlight": ".actions",
+          "label": "Acción recomendada"
+        }
+      ],
+      "text": "Caso uno, el nodo de red. Madrid metro. Veinte hogares por detrás de un mismo nodo de acceso empiezan a desviarse a la vez. Mire la firma: todos cuelgan del mismo padre. Eso es lo que convierte veinte quejas dispersas en una sola causa. La evidencia: veinte hogares elevados y sostenidos por encima del umbral de permanencia, una desviación media de siete coma cinco desviaciones típicas sobre la línea base aprendida de cada hogar, y los veinte por detrás de ese nodo según el mapa de red. El fallo está en el nodo, no en ningún hogar. Recomendación: inspeccionar el nodo y su agregación antes de que escalen las reclamaciones, con una hora y cuarenta y ocho minutos de antelación."
+    },
+    {
+      "id": "06b-home",
+      "seconds": 1,
+      "actions": [
+        {
+          "do": "seek",
+          "interval": 230
+        },
+        {
+          "do": "clickAlertByEntity",
+          "entity": "STB-2800002-02-010"
+        }
+      ],
+      "beats": [
+        {
+          "at": 0,
+          "highlight": ".alert-head",
+          "label": "Caso 2 · hogar aislado · Madrid metro"
+        },
+        {
+          "at": 11,
+          "highlight": ".shape-card",
+          "label": "Un hogar, vecinos sanos"
+        },
+        {
+          "at": 22,
+          "highlight": ".actions",
+          "label": "Sin desplazamiento de técnico"
+        }
+      ],
+      "text": "Caso dos, el cliente individual. La firma es la contraria: un solo hogar elevado y sostenido, mientras todos sus vecinos en el mismo nodo siguen en línea base. Esa comprobación sobre el grafo es la que descarta la red. El aislamiento es la atribución: la causa está dentro de este hogar. Recomendación: contacto proactivo con el cliente y reconfiguración del gateway. Sin desplazamiento de técnico, y cuatro horas antes de que el cliente lo hubiera notado."
+    },
+    {
+      "id": "06c-invisible",
+      "seconds": 1,
+      "actions": [
+        {
+          "do": "seek",
+          "interval": 372
+        },
+        {
+          "do": "clickAlertByEntity",
+          "entity": "OLT-1500001-01"
+        }
+      ],
+      "beats": [
+        {
+          "at": 0,
+          "highlight": ".alert-head",
+          "label": "Caso 3 · fallo invisible · A Coruña"
+        },
+        {
+          "at": 12,
+          "highlight": ".right",
+          "label": "Ningún código de error"
+        },
+        {
+          "at": 26,
+          "highlight": ".measured-card",
+          "label": "Sustitución evitada · 100 %"
+        }
+      ],
+      "text": "Caso tres, el fallo que hoy no se ve. A Coruña. Cinco hogares con un deterioro recurrente y ningún código de error en el dato: para la herramienta actual, aquí no pasa nada. El recibo lo dice explícitamente: el motor no ha leído ninguna etiqueta, solo el flujo de magnitud de cuatro campos. En mitad del fallo se simula la sustitución del descodificador, y la firma no cambia. El equipo queda exonerado. El motor sitúa el fallo en el segmento de acceso con una confianza del noventa y dos por ciento y una discriminación de sustitución del cien por cien. Recomendación: investigar el segmento y dejar de enviar equipos de repuesto. Ese es el ciclo de sustituciones inútiles, roto."
+    },
+    {
+      "id": "07-mgmt",
+      "seconds": 1,
+      "actions": [
+        {
+          "do": "tab",
+          "name": "direccion"
+        }
+      ],
+      "beats": [
+        {
+          "at": 0,
+          "highlight": ".kpis",
+          "label": "Resultado de la ejecución"
+        },
+        {
+          "at": 12,
+          "highlight": null,
+          "label": null
+        }
+      ],
+      "text": "El resultado de la ejecución completa: veinticuatro fallos inyectados, veinticuatro identificados. Cuarenta y cuatro minutos de antelación media. Localización y atribución de capa al cien por cien. Cero falsos positivos sobre ochenta y nueve intervalos en calma, y los tres señuelos contenidos."
+    },
+    {
+      "id": "08-fields",
+      "seconds": 1,
+      "screen": "fields",
+      "plate": "La huella de datos",
+      "text": "Todo esto sale de cuatro campos por elemento y por intervalo. Origen, destino, tiempo y magnitud. Origen y destino son una arista, el tiempo la sitúa en un intervalo y la magnitud es el peso: un grafo ponderado en el tiempo. Sin entrenamiento y sin histórico etiquetado."
+    },
+    {
+      "id": "09-outro",
+      "seconds": 1,
+      "screen": "outro",
+      "text": "La telemetría ya converge dentro de Telefónica antes de llegar a nosotros: un punto de integración, dos como mucho. Podemos empezar en modo offline, sobre datos ya almacenados y anonimizados. De cuatro a ocho semanas desde la recepción del dato, y tiene un prototipo funcionando sobre datos de Movistar."
+    }
+  ]
+}

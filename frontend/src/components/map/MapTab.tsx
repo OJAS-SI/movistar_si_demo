@@ -151,9 +151,9 @@ export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert, tr }: Map
         </svg>
 
         <div className="map-legend">
-          <div className="lg-title">At interval {t} · {clockAt(t, intervalSeconds)}</div>
+          <div className="lg-title">{tr('map.atInterval')} {t} · {clockAt(t, intervalSeconds)}</div>
           <div className="row">
-            <span className="lg-dot" style={{ background: C.red }} /> element named by the engine
+            <span className="lg-dot" style={{ background: C.red }} /> {tr('map.namedByEngine')}
           </div>
           <div className="row">
             <span className="lg-dot" style={{ background: C.amber }} /> {tr('map.legend.forming')}
@@ -203,8 +203,9 @@ export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert, tr }: Map
           <div className="drill">
             <h4>{selectedRegion.name}</h4>
             <p className="dsub">
-              Province <span className="mono">{selectedRegion.province_code}</span> — the leading
-              pair of the MIGA central-office identifier, reproduced in every node id below.
+              {tr('map.province')}{' '}
+              <span className="mono">{selectedRegion.province_code}</span>{' '}
+              {tr('map.provinceNote')}
             </p>
 
             <div className="dstat">
@@ -237,10 +238,10 @@ export function MapTab({ run, alerts, t, intervalSeconds, onOpenAlert, tr }: Map
                     <span>
                       <span className="miga">{selectedRegion.province_code}·{office}</span>
                       <span className="cn" style={{ display: 'block' }}>
-                        central office
+                        {tr('map.centralOffice')}
                       </span>
                     </span>
-                    {here.length > 0 && <span className="fbadge">fault</span>}
+                    {here.length > 0 && <span className="fbadge">{tr('map.faultBadge')}</span>}
                   </div>
                 </div>
               )

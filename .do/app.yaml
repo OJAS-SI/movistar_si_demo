@@ -1,0 +1,43 @@
+# DigitalOcean App Platform spec.
+#
+#   doctl apps create --spec .do/app.yaml
+#   doctl apps update <id> --spec .do/app.yaml
+#
+# One service, one process, one port: FastAPI serves the API and the built React console
+# from the same image, so there is no separate static site to keep in step.
+name: movistar-si-demo
+region: fra          # Frankfurt: nearest region to a Telefónica audience
+features:
+  - buildpack-stack=ubuntu-22
+
+services:
+  - name: console
+    dockerfile_path: Dockerfile
+    source_dir: /
+    github:
+      repo: OJAS-SI/movistar_si_demo
+      branch: restructure-layers
+      deploy_on_push: true
+
+    http_port: 8080
+    instance_count: 1
+    # The run is CPU-bound and single-threaded; memory peaks around 45 MB, so the useful
+    # axis is CPU, not RAM. basic-xxs prewarms the full network in roughly 3-6 minutes;
+    # step up to basic-xs if that window matters on the day.
+    instance_size_slug: basic-xxs
+
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 15
+      period_seconds: 20
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 5
+
+    envs:
+      - key: SI_PREWARM
+        scope: RUN_TIME
+        value: "1"
+      - key: SI_MAX_RUNS
+        scope: RUN_TIME
+        value: "8"

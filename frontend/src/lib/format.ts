@@ -11,10 +11,15 @@ import type { Layer, Shape, UseCase } from '../api/types'
 
 /** The palette, in hex, because SVG attributes cannot take CSS custom properties. */
 export const C = {
+  // Severity is not branded: red / amber / green mean critical / degrading / healthy and
+  // are reserved for that meaning. Only the blue is a brand colour.
   red: '#F0554E',
   amber: '#F2A73B',
   green: '#2FD08A',
-  cyan: '#19B3F0',
+  // Future Space accent3. The brand primary #1265FF is too dark to read as a label on
+  // this background (3.3:1); this is the readable lift at 4.9:1.
+  cyan: '#3C8DFF',
+  brand: '#1265FF',
   line: '#254a6b',
   lineSoft: '#1E3B57',
   muted: '#89A6C2',

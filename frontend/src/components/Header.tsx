@@ -1,5 +1,6 @@
 import type { ConsoleOut, RunOut, ScaleName } from '../api/types'
 import { LANGS, type Lang, type StringKey, type T } from '../lib/i18n'
+import { FutureSpaceMark } from './FutureSpaceMark'
 import { Icon, type IconName } from './Icon'
 
 export type TabKey = 'analyst' | 'mgmt' | 'map'
@@ -27,13 +28,19 @@ export function Header({ model, run, scale, busy, tab, onTab, onScale,
                          lang, onLang, t }: HeaderProps) {
   return (
     <header>
+      {/* Future Space is the vendor; Movistar Service Intelligence is the product. The
+          mark carries the brand, the wordmark under it carries the attribution, and the
+          product name stays the h1 - the customer's name should lead their own console. */}
       <div className="brand">
         <span className="logo">
-          <Icon name="network" />
+          <FutureSpaceMark className="mark" />
         </span>
         <div>
           <h1>{model?.title ?? 'Movistar Service Intelligence'}</h1>
-          <div className="sub">{t('header.subtitle')}</div>
+          <div className="sub">
+            {t('header.subtitle')}
+            <span className="by">Future Space SA</span>
+          </div>
         </div>
         <span className="synthetic">{t('header.synthetic')}</span>
       </div>

@@ -1,11 +1,20 @@
 /*
- * The design system, carried over from si_core/ui/movistar_si_twin.html.
+ * The design system: a dark operations room in Future Space colours.
  *
- * The twin console was the design reference: a dark operations room, cyan for the
- * engine's own voice, red / amber / green reserved for severity and never for
- * decoration. Those tokens are reproduced here unchanged, so the React console reads
- * as the same product - only now every value on screen comes from the API rather than
- * from the mock data the twin carried inline.
+ * Structure is inherited from si_core/ui/movistar_si_twin.html - the twin was the design
+ * reference - but the palette is now the Future Space brand, taken from the theme of
+ * `Documents/[Plantilla_PPT] FutureSpace_LIGERA_2026`.
+ *
+ * BRAND BLUE, AND WHY IT IS SPLIT IN THREE
+ *   The brand primary is #1265FF. On this background it measures 3.3:1 against a panel -
+ *   fine for a solid fill, below the 4.5:1 a label needs. So the primary is used where it
+ *   is a BACKGROUND (active tab, buttons, the mark), and the lighter brand accents carry
+ *   text: #3C8DFF at 4.9:1 for the engine's own voice, #66B3FF at 7.2:1 for emphasis.
+ *   The deep navies are decorative only - borders and gradients, never type.
+ *
+ * SEVERITY IS NOT BRANDED. Red / amber / green mean critical / degrading / healthy and
+ * are reserved for that. They are not part of the brand palette and must not be tuned to
+ * match it, or the console starts colouring decoration with severity.
  */
 
 :root {
@@ -16,8 +25,18 @@
   --line: #1e3b57;
   --line-soft: #17324b;
 
-  --cyan: #19b3f0;
-  --cyan-deep: #0b7ec2;
+  /* Future Space brand */
+  --brand: #1265ff;           /* accent1 - primary, fills only */
+  --brand-deep: #0a2e73;      /* dk2     - decorative */
+  --brand-dark: #0a275c;      /* accent2 - decorative */
+  --brand-lift: #3c8dff;      /* accent3 - the engine's voice, 4.9:1 */
+  --brand-bright: #66b3ff;    /* accent4 - emphasis, 7.2:1 */
+  --brand-pale: #e8f2ff;      /* lt2 */
+
+  /* The console was built against --cyan; these keep every existing rule working while
+     re-pointing it at the brand. --cyan is the readable lift, not the primary. */
+  --cyan: var(--brand-lift);
+  --cyan-deep: var(--brand);
 
   --txt: #e7f1fa;
   --muted: #89a6c2;
@@ -32,7 +51,11 @@
 
   --radius: 12px;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Roboto Mono', monospace;
-  --ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Arial is the Future Space brand face (theme majorFont and minorFont both Arial).
+     Helvetica is the metric-compatible fallback on macOS, Liberation Sans on Linux, so
+     the console keeps the same measurements wherever it is presented from. The mono
+     stack is unchanged: entity ids and measured values must stay monospaced. */
+  --ui: Arial, Helvetica, 'Liberation Sans', sans-serif;
 }
 
 * {
@@ -48,8 +71,8 @@ body,
 
 body {
   background:
-    radial-gradient(1100px 620px at 82% -10%, rgba(25, 179, 240, 0.1), transparent 60%),
-    radial-gradient(900px 520px at 0% 110%, rgba(11, 126, 194, 0.1), transparent 55%),
+    radial-gradient(1100px 620px at 82% -10%, rgba(60, 141, 255, 0.1), transparent 60%),
+    radial-gradient(900px 520px at 0% 110%, rgba(10, 46, 115, 0.1), transparent 55%),
     var(--bg);
   color: var(--txt);
   font-family: var(--ui);
@@ -91,12 +114,19 @@ header {
   border-radius: 8px;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 30% 25%, #37c6ff, #0b7ec2);
-  box-shadow: 0 0 0 1px rgba(25, 179, 240, 0.4), 0 6px 18px rgba(25, 179, 240, 0.25);
+  background: radial-gradient(circle at 30% 25%, #66b3ff, #1265ff);
+  box-shadow: 0 0 0 1px rgba(60, 141, 255, 0.4), 0 6px 18px rgba(60, 141, 255, 0.25);
 }
 .logo svg {
   width: 18px;
   height: 18px;
+}
+/* The Future Space mark. White on the brand-blue tile, which is the pairing the brand
+   template uses; the mark's own SVG is the white variant and inherits currentColor. */
+.logo .mark {
+  width: 19px;
+  height: 19px;
+  color: #fff;
 }
 .brand h1 {
   font-size: 14px;
@@ -107,6 +137,21 @@ header {
 .brand .sub {
   font-size: 11px;
   color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+/* Vendor attribution, subordinate to the product name above it. */
+.brand .by {
+  color: var(--brand-lift);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.brand .by::before {
+  content: '·';
+  margin-right: 7px;
+  color: var(--faint);
+  font-weight: 400;
 }
 .synthetic {
   font-size: 10px;
@@ -153,7 +198,7 @@ header {
   color: var(--txt);
   background: var(--panel);
   border-color: var(--cyan);
-  box-shadow: 0 0 0 1px rgba(25, 179, 240, 0.25);
+  box-shadow: 0 0 0 1px rgba(60, 141, 255, 0.25);
 }
 .tab.active svg {
   color: var(--cyan);
@@ -321,8 +366,8 @@ header {
 }
 .splash .retry {
   margin-top: 16px;
-  border: 1px solid #1a76b0;
-  background: linear-gradient(180deg, #0e5f92, #0b4d78);
+  border: 1px solid #3c8dff;
+  background: linear-gradient(180deg, #1265ff, #0a2e73);
   color: #fff;
   border-radius: 9px;
   padding: 9px 16px;
@@ -433,7 +478,7 @@ header {
   overflow: hidden;
 }
 .qcard:hover {
-  border-color: #2a557c;
+  border-color: #2f5a9e;
   transform: translateY(-1px);
 }
 .qcard:focus-visible {
@@ -442,7 +487,7 @@ header {
 }
 .qcard.active {
   border-color: var(--cyan);
-  background: linear-gradient(180deg, rgba(25, 179, 240, 0.1), var(--panel));
+  background: linear-gradient(180deg, rgba(60, 141, 255, 0.1), var(--panel));
 }
 .qcard.forming {
   opacity: 0.7;
@@ -843,7 +888,7 @@ header {
 }
 .beat.on {
   border-color: var(--cyan);
-  box-shadow: 0 0 0 1px rgba(25, 179, 240, 0.25) inset;
+  box-shadow: 0 0 0 1px rgba(60, 141, 255, 0.25) inset;
 }
 .beat.done {
   opacity: 0.55;
@@ -862,7 +907,7 @@ header {
   min-height: 200px;
   height: auto;
   display: block;
-  background: radial-gradient(420px 220px at 50% 40%, rgba(25, 179, 240, 0.06), transparent 70%);
+  background: radial-gradient(420px 220px at 50% 40%, rgba(60, 141, 255, 0.06), transparent 70%);
 }
 .legend {
   display: flex;
@@ -1053,7 +1098,7 @@ header {
   letter-spacing: 0.8px;
   text-transform: uppercase;
   color: var(--cyan);
-  background: rgba(25, 179, 240, 0.05);
+  background: rgba(60, 141, 255, 0.05);
   border-right: 1px solid var(--line-soft);
   font-weight: 650;
 }
@@ -1125,7 +1170,7 @@ header {
   transition: 0.14s;
 }
 .abtn:hover {
-  border-color: #2a557c;
+  border-color: #2f5a9e;
   background: var(--panel-2);
 }
 .abtn:focus-visible {
@@ -1156,8 +1201,8 @@ header {
   font-size: 10.5px;
 }
 .abtn.primary {
-  background: linear-gradient(180deg, #0e5f92, #0b4d78);
-  border-color: #1a76b0;
+  background: linear-gradient(180deg, #1265ff, #0a2e73);
+  border-color: #3c8dff;
 }
 .abtn.primary .aico {
   background: rgba(255, 255, 255, 0.12);
@@ -1356,7 +1401,7 @@ table.worst .el {
 .mapwrap {
   position: relative;
   overflow: hidden;
-  background: radial-gradient(900px 600px at 45% 40%, rgba(25, 179, 240, 0.05), transparent 70%);
+  background: radial-gradient(900px 600px at 45% 40%, rgba(60, 141, 255, 0.05), transparent 70%);
 }
 .mapsvg {
   width: 100%;
@@ -1429,7 +1474,7 @@ table.worst .el {
   background: var(--panel);
 }
 .region-row.sel {
-  background: linear-gradient(90deg, rgba(25, 179, 240, 0.12), transparent);
+  background: linear-gradient(90deg, rgba(60, 141, 255, 0.12), transparent);
 }
 .region-row .rd {
   width: 10px;
@@ -1627,8 +1672,8 @@ table.worst .el {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  border: 1px solid #1a76b0;
-  background: linear-gradient(180deg, #0e5f92, #0b4d78);
+  border: 1px solid #3c8dff;
+  background: linear-gradient(180deg, #1265ff, #0a2e73);
   color: #fff;
   display: grid;
   place-items: center;
@@ -1660,7 +1705,7 @@ table.worst .el {
 }
 .tbtn:hover {
   color: var(--txt);
-  border-color: #2a557c;
+  border-color: #2f5a9e;
 }
 .tbtn.speed {
   min-width: 44px;
@@ -1693,7 +1738,7 @@ table.worst .el {
   left: 0;
   top: 0;
   bottom: 0;
-  background: linear-gradient(90deg, rgba(25, 179, 240, 0.25), rgba(25, 179, 240, 0.08));
+  background: linear-gradient(90deg, rgba(60, 141, 255, 0.25), rgba(60, 141, 255, 0.08));
   border-right: 2px solid var(--cyan);
 }
 /* The magnitude trace: what the engine is actually reading, drawn behind the marks. */
@@ -1820,7 +1865,7 @@ table.worst .el {
 .live-progress > i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, rgba(25, 179, 240, 0.35), rgba(25, 179, 240, 0.6));
+  background: linear-gradient(90deg, rgba(60, 141, 255, 0.35), rgba(60, 141, 255, 0.6));
   transition: width 0.3s ease;
 }
 .live-progress-label {

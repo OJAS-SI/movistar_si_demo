@@ -291,25 +291,25 @@ function NamedVerdict({
             <p className="shape-note">
             {panel.shape === 'single' ? (
               <>
-                One home is impaired while every peer on <b>{panel.entity.split('-').slice(0, 2).join('-')}</b>{' '}
-                stays at baseline. Isolation is the attribution: the fault is inside this
-                household, so the fix is a call and a reconfiguration — not a truck.
+                {tr('shapeNote.single.a')}{' '}
+                <b>{panel.entity.split('-').slice(0, 2).join('-')}</b>{' '}
+                {tr('shapeNote.single.b')}
               </>
             ) : panel.shape === 'cluster' ? (
               <>
-                All {panel.affected.length} impaired homes sit behind <b>{panel.entity}</b>. A
-                shared parent is the attribution: the fault lives at the access node, not in
-                any one home.
+                {tr('shapeNote.cluster.a')} {panel.affected.length}{' '}
+                {tr('shapeNote.cluster.b')} <b>{panel.entity}</b>
+                {tr('shapeNote.cluster.c')}
               </>
             ) : panel.shape === 'path' ? (
               <>
-                The impairment runs along a route through <b>{panel.entity}</b>, crossing homes
-                that share nothing else. That is a core-transport signature.
+                {tr('shapeNote.path.a')} <b>{panel.entity}</b>
+                {tr('shapeNote.path.b')}
               </>
             ) : (
               <>
-                Homes with no network parent in common degrade together behind{' '}
-                <b>{panel.entity}</b>. Only a shared content source explains that.
+                {tr('shapeNote.source.a')} <b>{panel.entity}</b>
+                {tr('shapeNote.source.b')}
               </>
             )}
             </p>
@@ -351,7 +351,7 @@ function NamedVerdict({
             </div>
 
             <div className="shi-flex">
-              <Gauge value={diagnosis?.confidence ?? 0} color={severityColor(alert.severity)} />
+              <Gauge value={diagnosis?.confidence ?? 0} color={severityColor(alert.severity)} tr={tr} />
               <div className="shi-info">
                 <h4>{panel.entity}</h4>
                 <span
@@ -365,9 +365,8 @@ function NamedVerdict({
                   {clockAt(alert.namedAt, intervalSeconds)})
                   {alert.onsetAt !== null && (
                     <>
-                      , while the fault had been forming since{' '}
-                      <b className="mono">{alert.onsetAt}</b> and had not yet surfaced to a
-                      single customer.
+                      {tr('verdict.formingSince')}{' '}
+                      <b className="mono">{alert.onsetAt}</b> {tr('verdict.notSurfaced')}
                     </>
                   )}
                 </p>
@@ -375,11 +374,11 @@ function NamedVerdict({
                   <div className="traj">
                     <Icon name="alert" style={{ width: 14, height: 14 }} />
                     <span>
-                      {diagnosis.trajectory.rising ? 'Rising' : 'Stable'} —{' '}
+                      {diagnosis.trajectory.rising ? tr('verdict.rising') : tr('verdict.stable')} —{' '}
                       {diagnosis.trajectory.detail}
                       {diagnosis.trajectory.horizon_interval !== null && (
                         <>
-                          ; on this trend it would broaden around interval{' '}
+                          {tr('verdict.onThisTrend')}{' '}
                           <span className="mono">{diagnosis.trajectory.horizon_interval}</span>
                         </>
                       )}
@@ -432,7 +431,7 @@ function NamedVerdict({
 }
 
 /** The confidence dial. */
-function Gauge({ value, color }: { value: number; color: string }) {
+function Gauge({ value, color, tr }: { value: number; color: string; tr: T }) {
   const radius = 50
   const circumference = 2 * Math.PI * radius
   const filled = circumference * value
@@ -456,7 +455,7 @@ function Gauge({ value, color }: { value: number; color: string }) {
       </svg>
       <div className="num">
         <b style={{ color }}>{Math.round(value * 100)}</b>
-        <small>confidence</small>
+        <small>{tr('gauge.confidence')}</small>
       </div>
     </div>
   )

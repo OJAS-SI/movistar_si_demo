@@ -164,7 +164,7 @@ def report_out(rep: DiagnosisReport, cat: Cat = CATALOGUE_EN) -> s.ReportOut:
 # Scoring
 # ---------------------------------------------------------------------------
 
-def score_out(score: Score, interval_seconds: int) -> s.ScoreOut:
+def score_out(score: Score, interval_seconds: int, cat: Cat = CATALOGUE_EN) -> s.ScoreOut:
     lead = score.mean_lead_time_intervals
     return s.ScoreOut(
         use_case=score.use_case.value if score.use_case else None,
@@ -176,14 +176,14 @@ def score_out(score: Score, interval_seconds: int) -> s.ScoreOut:
         box_swap_discrimination=score.box_swap_discrimination,
         false_positive_rate=score.false_positive_rate,
         action_correctness=score.action_correctness,
-        note=score.note,
+        note=_say(score.note_msg, score.note, cat),
     )
 
 
 def scorecard_out(report: ScoreReport, passed: bool,
                   cat: Cat = CATALOGUE_EN) -> s.ScorecardOut:
     return s.ScorecardOut(
-        per_use_case=[score_out(sc, report.interval_seconds) for sc in report.per_use_case],
+        per_use_case=[score_out(sc, report.interval_seconds, cat) for sc in report.per_use_case],
         false_positive_rate=report.false_positive_rate,
         n_non_fault_intervals=report.n_non_fault_intervals,
         n_spurious_intervals=report.n_spurious_intervals,
@@ -209,7 +209,7 @@ def fault_panel_out(panel: FaultPanel, interval_seconds: int,
         layer=d.layer.value if d and d.layer else None,
         shape=panel.shape.value, affected=list(panel.affected),
         report=report_out(panel.report, cat),
-        score=score_out(panel.score, interval_seconds),
+        score=score_out(panel.score, interval_seconds, cat),
     )
 
 

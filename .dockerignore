@@ -1,0 +1,16 @@
+# Build context hygiene: everything the image does not need, so builds stay fast and no
+# secret or local artefact can be baked in.
+.git
+.venv
+.idea
+**/__pycache__
+**/*.pyc
+frontend/node_modules
+frontend/dist
+video/node_modules
+video/out
+video/.env
+Documents
+*.md
+!backend/requirements.txt
+movistar_si_console.html

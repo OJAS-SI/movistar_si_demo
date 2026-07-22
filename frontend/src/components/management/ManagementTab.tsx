@@ -13,8 +13,8 @@
 
 import type { ConsoleOut, RunOut } from '../../api/types'
 import type { Alert } from '../../lib/alerts'
-import { LAYER_COLOR, leadTime, num, pct, USE_CASE_LABEL } from '../../lib/format'
-import { layerLabelOf, type T } from '../../lib/i18n'
+import { LAYER_COLOR, leadTime, num, pct } from '../../lib/format'
+import { labelForUseCase, layerLabelOf, type T } from '../../lib/i18n'
 import { Icon } from '../Icon'
 
 interface ManagementTabProps {
@@ -118,7 +118,7 @@ export function ManagementTab({ model, run, alerts, tr }: ManagementTabProps) {
             <span className="ico">
               <Icon name="graph" />
             </span>
-            Per use case, measured
+            {tr('mgmt.perUseCase')}
           </div>
 
           <table className="worst">
@@ -143,7 +143,7 @@ export function ManagementTab({ model, run, alerts, tr }: ManagementTabProps) {
                 return (
                   <tr key={alert.id}>
                     <td>
-                      <b>{score.use_case ? USE_CASE_LABEL[score.use_case] : '—'}</b>
+                      <b>{labelForUseCase(score.use_case, tr)}</b>
                       <div style={{ color: 'var(--faint)', fontSize: 10.5, marginTop: 2 }}>
                         {alert.panel.region} · {score.note}
                       </div>
@@ -175,7 +175,7 @@ export function ManagementTab({ model, run, alerts, tr }: ManagementTabProps) {
               <span className="ico">
                 <Icon name="network" />
               </span>
-              Layers implicated
+              {tr('mgmt.layersImplicated')}
             </div>
             <div className="layer-grid">
               {(['home', 'access', 'core', 'content'] as const).map((layer) => {
@@ -191,7 +191,7 @@ export function ManagementTab({ model, run, alerts, tr }: ManagementTabProps) {
                     </div>
                     <div className="ls">
                       {entry
-                        ? `${entry.homes} home${entry.homes === 1 ? '' : 's'} behind it`
+                        ? `${entry.homes} ${tr(entry.homes === 1 ? 'alerts.home' : 'alerts.homes')} ${tr('mgmt.behindIt')}`
                         : 'no fault at this layer'}
                     </div>
                   </div>
@@ -199,9 +199,7 @@ export function ManagementTab({ model, run, alerts, tr }: ManagementTabProps) {
               })}
             </div>
             <p className="shape-note">
-              The engine placed every fault in its true layer. That is what turns a verdict into
-              an action: a home fault is a phone call, an access fault is a field visit, and
-              telling them apart is the difference between a fix and a wasted truck.
+              {tr('mgmt.layersBody')} {tr('mgmt.layersBody2')}
             </p>
           </div>
 
@@ -210,7 +208,7 @@ export function ManagementTab({ model, run, alerts, tr }: ManagementTabProps) {
               <span className="ico">
                 <Icon name="shield" />
               </span>
-              What it refused to do
+              {tr('mgmt.refused')}
             </div>
             <div className="impact-grid">
               <div className="stat good">
@@ -239,7 +237,7 @@ export function ManagementTab({ model, run, alerts, tr }: ManagementTabProps) {
           <span className="ico">
             <Icon name="receipt" />
           </span>
-          The scorecard, as the engine prints it
+          {tr('mgmt.scorecardAsPrinted')}
         </div>
         <pre className="scoretext">{scorecard.text}</pre>
       </div>

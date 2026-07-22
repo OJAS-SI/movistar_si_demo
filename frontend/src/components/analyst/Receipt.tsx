@@ -70,8 +70,7 @@ export function Receipt({ panel, tr }: { panel: FaultPanelOut; tr: T }) {
             {tr('receipt.title')}
           </div>
           <p className="sub">
-            Why the engine believes this, what would have proved it wrong, and where every
-            number came from.
+            {tr('receipt.why')}
           </p>
 
           {receipt ? (
@@ -127,14 +126,14 @@ export function Receipt({ panel, tr }: { panel: FaultPanelOut; tr: T }) {
               <span className="ico">
                 <Icon name="target" />
               </span>
-              What it looked at
+              {tr('receipt.whatItLookedAt')}
             </div>
             <p className="sub">
-              Intervals{' '}
+              {tr('receipt.intervals')}{' '}
               <b className="mono">
                 {evidence.provenance.interval_start}–{evidence.provenance.interval_end}
               </b>{' '}
-              · {evidence.provenance.entities_examined.length} entities examined ·{' '}
+              · {evidence.provenance.entities_examined.length} {tr('receipt.entitiesExamined')} ·{' '}
               {evidence.provenance.note}
             </p>
             <div className="qmeta">
